@@ -1,0 +1,394 @@
+// Schema Prisma : ecrit dans l'intersection SQLite / PostgreSQL.
+// Aucun enum natif, aucun type Json, aucune liste scalaire, donc le passage
+// de SQLite (developpement) a PostgreSQL (VPS) est un changement d'une ligne.
+// Les valeurs de type "enum" sont typees cote TypeScript dans src/lib/constants.ts
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql" // developpement local : node scripts/set-db-provider.mjs sqlite
+  url       = env("DATABASE_URL")
+  // Connexion directe, sans pooler : indispensable pour db push et migrate.
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// TENANTS ET COMPTES
+// ---------------------------------------------------------------------------
+
+/// Un club, une academie ou une federation. Unite de facturation et d'isolation.
+model Organization {
+  id         String    @id @default(cuid())
+  name       String
+  slug       String    @unique
+  country    String?
+  city       String?
+  logoUrl    String?
+  plan       String    @default("TRIAL") // TRIAL | STARTER | PRO | ELITE
+  isActive   Boolean   @default(true)
+  maxTeams   Int       @default(3)
+  maxPlayers Int       @default(60)
+  expiresAt  DateTime?
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  users User[]
+  teams Team[]
+
+  @@index([isActive])
+}
+
+/// Utilisateur de l'application. Le proprietaire (OWNER) n'appartient a aucune organisation.
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  passwordHash   String
+  name           String
+  role           String    @default("COACH") // OWNER | CLUB_ADMIN | COACH | ANALYST | VIEWER
+  organizationId String?
+  isActive       Boolean   @default(true)
+  locale         String    @default("fr") // fr | en
+  phone          String?
+  jobTitle       String?
+  /// Incremente pour invalider toutes les sessions JWT existantes de cet utilisateur.
+  tokenVersion   Int       @default(0)
+  mustChangePw   Boolean   @default(false)
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships  TeamMember[]
+  auditLogs    AuditLog[]
+
+  @@index([organizationId])
+  @@index([role])
+}
+
+/// Trace de toutes les actions sensibles, consultable dans le panel proprietaire.
+model AuditLog {
+  id             String   @id @default(cuid())
+  userId         String?
+  actorEmail     String
+  organizationId String?
+  action         String // LOGIN | CREATE | UPDATE | DELETE | IMPERSONATE | EXPORT
+  entity         String
+  entityId       String?
+  metaJson       String? // charge utile serialisee
+  ip             String?
+  createdAt      DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([organizationId, createdAt])
+  @@index([action])
+}
+
+// ---------------------------------------------------------------------------
+// EQUIPES ET JOUEURS
+// ---------------------------------------------------------------------------
+
+model Team {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  category       String   @default("SENIOR") // U13 | U15 | U17 | U19 | U21 | SENIOR
+  sex            String   @default("M") // M | F
+  season         String   @default("2025-2026")
+  level          String? // PRO | SEMI_PRO | AMATEUR | ACADEMY
+  colorHex       String   @default("#1E40AF")
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members          TeamMember[]
+  players          Player[]
+  testSessions     TestSession[]
+  testResults      TestResult[]
+  metrics          Metric[]
+  trainingSessions TrainingSession[]
+
+  @@index([organizationId, isActive])
+}
+
+/// Rattachement d'un staff a une equipe.
+model TeamMember {
+  id          String   @id @default(cuid())
+  teamId      String
+  userId      String
+  accessLevel String   @default("MANAGE") // MANAGE | VIEW
+  createdAt   DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+model Player {
+  id                String   @id @default(cuid())
+  teamId            String
+  firstName         String
+  lastName          String
+  birthDate         DateTime
+  sex               String   @default("M")
+  position          String   @default("CM") // GK | CB | FB | DM | CM | AM | W | ST
+  secondaryPosition String?
+  dominantFoot      String   @default("R") // R | L | B
+  jerseyNumber      Int?
+  heightCm          Float?
+  weightKg          Float?
+  status            String   @default("ACTIVE") // ACTIVE | INJURED | REHAB | LOANED | LEFT
+  photoUrl          String?
+  email             String?
+  externalId        String? // identifiant GPS ou federation
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  team           Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  anthropometry  Anthropometry[]
+  testResults    TestResult[]
+  metrics        Metric[]
+  injuries       Injury[]
+  wellness       DailyWellness[]
+  loads          PlayerLoad[]
+
+  @@index([teamId, status])
+  @@index([lastName])
+}
+
+// ---------------------------------------------------------------------------
+// TESTS ET METRIQUES
+// ---------------------------------------------------------------------------
+
+/// Une passation de tests : une date, une equipe, une ou plusieurs batteries.
+model TestSession {
+  id           String   @id @default(cuid())
+  teamId       String
+  date         DateTime
+  name         String
+  testKeys     String // cles de tests separees par des virgules
+  surface      String? // NATURAL_GRASS | ARTIFICIAL | INDOOR | TRACK
+  weather      String?
+  temperatureC Float?
+  notes        String?
+  createdById  String?
+  isLocked     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  team    Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  results TestResult[]
+
+  @@index([teamId, date])
+}
+
+/// Resultat brut d'un test pour un joueur. Les entrees et les valeurs calculees
+/// sont serialisees, ce qui permet d'ajouter un nouveau test sans migration.
+model TestResult {
+  id           String   @id @default(cuid())
+  sessionId    String?
+  playerId     String
+  teamId       String
+  testKey      String
+  date         DateTime
+  rawJson      String   @default("{}")
+  computedJson String   @default("{}")
+  quality      String   @default("GOOD") // GOOD | DOUBTFUL | INVALID
+  notes        String?
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  session TestSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  player  Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  team    Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  metrics Metric[]
+
+  @@index([playerId, testKey, date])
+  @@index([teamId, testKey, date])
+  @@index([sessionId])
+}
+
+/// Table plate qui alimente tous les graphiques, radars et percentiles.
+/// Une ligne par valeur mesurable, ce qui rend les requetes de tendance triviales.
+model Metric {
+  id           String   @id @default(cuid())
+  playerId     String
+  teamId       String
+  testResultId String?
+  key          String // ex : sprint_10m, cmj_height, f0_rel, vift
+  value        Float
+  unit         String
+  date         DateTime
+  side         String? // L | R | null pour bilateral
+  source       String   @default("TEST") // TEST | MANUAL | IMPORT | COMPUTED
+  createdAt    DateTime @default(now())
+
+  player     Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  team       Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  testResult TestResult? @relation(fields: [testResultId], references: [id], onDelete: Cascade)
+
+  @@index([playerId, key, date])
+  @@index([teamId, key, date])
+  @@index([date])
+}
+
+/// Valeurs de reference publiees, utilisees pour les percentiles et les z scores.
+model ReferenceNorm {
+  id             String  @id @default(cuid())
+  metricKey      String
+  population     String // SENIOR_PRO | SENIOR_SEMIPRO | SENIOR_AMATEUR | U21 | U19 | U17 | U15 | U13
+  sex            String  @default("M")
+  position       String? // null = toutes positions confondues
+  n              Int?
+  mean           Float?
+  sd             Float?
+  p10            Float?
+  p25            Float?
+  p50            Float?
+  p75            Float?
+  p90            Float?
+  higherIsBetter Boolean @default(true)
+  source         String
+  year           Int?
+
+  @@unique([metricKey, population, sex, position])
+  @@index([metricKey])
+}
+
+// ---------------------------------------------------------------------------
+// ANTHROPOMETRIE ET MATURATION
+// ---------------------------------------------------------------------------
+
+model Anthropometry {
+  id               String   @id @default(cuid())
+  playerId         String
+  date             DateTime
+  heightCm         Float
+  sittingHeightCm  Float?
+  weightKg         Float
+  bodyFatPct       Float?
+  sumSkinfoldsMm   Float?
+  skinfoldsJson    String? // detail des plis cutanes ISAK
+  method           String? // DURNIN_WOMERSLEY | JACKSON_POLLOCK_7 | ISAK | BIA
+  /// Maturation : ecart en annees par rapport au pic de croissance (Mirwald ou Fransen)
+  maturityOffset   Float?
+  aphvYears        Float?
+  pctAdultHeight   Float?
+  motherHeightCm   Float?
+  fatherHeightCm   Float?
+  notes            String?
+  createdAt        DateTime @default(now())
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId, date])
+}
+
+// ---------------------------------------------------------------------------
+// CHARGE, BIEN ETRE, BLESSURES (structure prete pour la phase 2)
+// ---------------------------------------------------------------------------
+
+model TrainingSession {
+  id          String   @id @default(cuid())
+  teamId      String
+  date        DateTime
+  type        String   @default("TRAINING") // TRAINING | MATCH | GYM | RECOVERY | REST
+  mdCode      String? // MD-4 | MD-3 | MD-2 | MD-1 | MD | MD+1 | MD+2
+  title       String?
+  durationMin Int?
+  focus       String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  team  Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  loads PlayerLoad[]
+
+  @@index([teamId, date])
+}
+
+model PlayerLoad {
+  id                String   @id @default(cuid())
+  trainingSessionId String
+  playerId          String
+  rpe               Float?
+  durationMin       Int?
+  srpe              Float?
+  totalDistanceM    Float?
+  hsrM              Float? // distance au dessus de 19.8 km/h
+  sprintDistanceM   Float? // distance au dessus de 25.2 km/h
+  accelCount        Int? // au dessus de 3 m/s2
+  decelCount        Int?
+  maxSpeedKmh       Float?
+  playerLoad        Float?
+  trimp             Float?
+  createdAt         DateTime @default(now())
+
+  trainingSession TrainingSession @relation(fields: [trainingSessionId], references: [id], onDelete: Cascade)
+  player          Player          @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([trainingSessionId, playerId])
+  @@index([playerId])
+}
+
+model DailyWellness {
+  id           String   @id @default(cuid())
+  playerId     String
+  date         DateTime
+  sleepHours   Float?
+  sleepQuality Int? // 1 a 5
+  fatigue      Int?
+  soreness     Int?
+  stress       Int?
+  mood         Int?
+  hooperIndex  Float?
+  restingHr    Int?
+  hrvRmssd     Float?
+  bodyMassKg   Float?
+  createdAt    DateTime @default(now())
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, date])
+  @@index([date])
+}
+
+model Injury {
+  id            String    @id @default(cuid())
+  playerId      String
+  date          DateTime
+  type          String // MUSCLE | JOINT | LIGAMENT | TENDON | BONE | CONCUSSION | OTHER
+  bodyPart      String
+  side          String? // L | R | BILATERAL
+  mechanism     String? // CONTACT | NON_CONTACT | OVERUSE
+  context       String? // TRAINING | MATCH
+  severity      String? // MINIMAL | MILD | MODERATE | SEVERE
+  daysLost      Int?
+  rtpPhase      Int? // 1 a 6
+  expectedRtpAt DateTime?
+  returnedAt    DateTime?
+  diagnosis     String?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId, date])
+}
+
+/// Parametres globaux modifiables depuis le panel proprietaire.
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

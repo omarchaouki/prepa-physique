@@ -1,0 +1,124 @@
+import { Suspense } from "react";
+import Link from "next/link";
+import { ClipboardList, Plus } from "lucide-react";
+
+import { accessibleTeamIds, requireUser, type CurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { getTest } from "@/lib/sports-science/catalog";
+import { formatDate } from "@/lib/utils";
+import { Badge, EmptyState, PageHeader, Panel } from "@/components/ui/primitives";
+import { SkeletonTable } from "@/components/ui/skeleton";
+
+export const dynamic = "force-dynamic";
+
+async function SessionsTable({ user }: { user: CurrentUser }) {
+  const ids = await accessibleTeamIds(user);
+
+  const sessions = await prisma.testSession.findMany({
+    where: ids === "ALL" ? {} : { teamId: { in: ids } },
+    orderBy: { date: "desc" },
+    include: {
+      team: { select: { id: true, name: true, colorHex: true } },
+      _count: { select: { results: true } },
+    },
+  });
+
+  if (sessions.length === 0) {
+    return (
+      <EmptyState
+        title="Aucune passation"
+        description="Creez une passation pour saisir les resultats de toute une equipe en une seule fois."
+        icon={<ClipboardList size={20} />}
+        action={
+          <Link href="/app/sessions/new" className="btn btn-primary">
+            <Plus size={15} aria-hidden="true" />
+            Creer une passation
+          </Link>
+        }
+      />
+    );
+  }
+
+  return (
+    <div className="scroll-x">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th scope="col">Date</th>
+            <th scope="col" style={{ minWidth: "14rem" }}>Passation</th>
+            <th scope="col">Equipe</th>
+            <th scope="col" style={{ minWidth: "16rem" }}>Tests</th>
+            <th scope="col">Resultats</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sessions.map((session) => {
+            const keys = session.testKeys.split(",").filter(Boolean);
+            return (
+              <tr key={session.id}>
+                <td className="tabular" style={{ color: "var(--text-secondary)" }}>
+                  {formatDate(session.date)}
+                </td>
+                <td>
+                  <Link
+                    href={`/app/sessions/${session.id}`}
+                    className="font-medium cursor-pointer hover:underline"
+                  >
+                    {session.name}
+                  </Link>
+                </td>
+                <td>
+                  <Link
+                    href={`/app/teams/${session.team.id}`}
+                    className="inline-flex items-center gap-1.5 cursor-pointer hover:underline"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    <span
+                      className="size-2 rounded-full shrink-0"
+                      style={{ background: session.team.colorHex }}
+                      aria-hidden="true"
+                    />
+                    {session.team.name}
+                  </Link>
+                </td>
+                <td>
+                  <div className="flex flex-wrap gap-1">
+                    {keys.slice(0, 4).map((key) => (
+                      <Badge key={key}>{getTest(key)?.shortName.fr ?? key}</Badge>
+                    ))}
+                    {keys.length > 4 ? <Badge>+{keys.length - 4}</Badge> : null}
+                  </div>
+                </td>
+                <td className="tabular">{session._count.results}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export default async function SessionsPage() {
+  const user = await requireUser();
+
+  return (
+    <>
+      <PageHeader
+        title="Passations"
+        description="Chaque passation regroupe une date, une equipe et une ou plusieurs batteries de tests."
+        action={
+          <Link href="/app/sessions/new" className="btn btn-primary">
+            <Plus size={15} aria-hidden="true" />
+            Nouvelle passation
+          </Link>
+        }
+      />
+      <Panel padded={false} className="p-1">
+        <Suspense fallback={<SkeletonTable rows={8} columns={5} firstColumnWide={false} />}>
+          <SessionsTable user={user} />
+        </Suspense>
+      </Panel>
+    </>
+  );
+}

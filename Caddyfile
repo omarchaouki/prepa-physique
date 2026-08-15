@@ -1,0 +1,22 @@
+# Reverse proxy et certificat TLS automatique.
+# Le domaine vient de la variable APP_DOMAIN definie dans .env.
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	# En tete de securite de base.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	reverse_proxy app:3000 {
+		# Le streaming des reponses ne doit pas etre mis en tampon, sinon la page
+		# n'arriverait qu'une fois toutes les donnees pretes, ce qui annulerait
+		# tout le benefice du chargement progressif.
+		flush_interval -1
+	}
+}

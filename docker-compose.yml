@@ -1,0 +1,71 @@
+# Deploiement sur AWS Lightsail.
+#
+# La base de donnees est chez Supabase, il n'y a donc pas de service PostgreSQL
+# ici : seulement l'application et un reverse proxy qui obtient et renouvelle
+# tout seul le certificat TLS.
+#
+#   docker compose up -d --build
+#   docker compose run --rm tools npx prisma db push
+#   docker compose run --rm tools npx tsx prisma/seed.ts   (premiere fois seulement)
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # Pooler Supabase, port 6543. Sert a toutes les requetes de l'application.
+      DATABASE_URL: ${DATABASE_URL:?definir DATABASE_URL dans .env}
+      # Connexion directe, port 5432. Sert a prisma db push et migrate.
+      DIRECT_URL: ${DIRECT_URL:?definir DIRECT_URL dans .env}
+      AUTH_SECRET: ${AUTH_SECRET:?definir AUTH_SECRET dans .env}
+      OWNER_EMAIL: ${OWNER_EMAIL}
+      OWNER_PASSWORD: ${OWNER_PASSWORD}
+      OWNER_NAME: ${OWNER_NAME}
+    expose:
+      - "3000"
+    # L'application n'est pas exposee directement : tout passe par le proxy.
+
+  # Conteneur jetable pour les operations de schema et le seed.
+  #
+  # Il ne peut pas s'agir du conteneur "app" : l'image finale ne contient que la
+  # sortie autonome de Next, ou tsx est present sans esbuild dont il depend, et
+  # sans node_modules/.bin. Un "docker compose exec app npx tsx ..." echouerait
+  # donc, ou irait retelecharger les outils depuis npm au moment le plus mal
+  # choisi. L'etape "builder" contient elle les dependances completes.
+  #
+  # Le profil le tient hors du "up" : il ne demarre que si on l'appelle.
+  tools:
+    build:
+      context: .
+      target: builder
+    profiles: ["tools"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?definir DATABASE_URL dans .env}
+      DIRECT_URL: ${DIRECT_URL:?definir DIRECT_URL dans .env}
+      AUTH_SECRET: ${AUTH_SECRET:?definir AUTH_SECRET dans .env}
+      OWNER_EMAIL: ${OWNER_EMAIL}
+      OWNER_PASSWORD: ${OWNER_PASSWORD}
+      OWNER_NAME: ${OWNER_NAME}
+    command: ["true"]
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?definir APP_DOMAIN dans .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:
