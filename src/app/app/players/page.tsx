@@ -10,6 +10,7 @@ import {
   type PlayerStatus,
   type Position,
 } from "@/lib/constants";
+import { getLocale, getT } from "@/lib/i18n/server";
 import { ageExact } from "@/lib/utils";
 import { Badge, EmptyState, PageHeader, Panel } from "@/components/ui/primitives";
 import { SkeletonTable } from "@/components/ui/skeleton";
@@ -17,7 +18,7 @@ import { SkeletonTable } from "@/components/ui/skeleton";
 export const dynamic = "force-dynamic";
 
 async function PlayersTable({ user }: { user: CurrentUser }) {
-  const ids = await accessibleTeamIds(user);
+  const [ids, t, locale] = await Promise.all([accessibleTeamIds(user), getT(), getLocale()]);
 
   const players = await prisma.player.findMany({
     where: ids === "ALL" ? {} : { teamId: { in: ids } },
@@ -31,8 +32,8 @@ async function PlayersTable({ user }: { user: CurrentUser }) {
   if (players.length === 0) {
     return (
       <EmptyState
-        title="Aucun joueur"
-        description="Les joueurs apparaitront ici des qu'une equipe vous sera rattachee."
+        title={t("players.none")}
+        description={t("players.noneBody")}
         icon={<Users size={20} />}
       />
     );
@@ -43,14 +44,14 @@ async function PlayersTable({ user }: { user: CurrentUser }) {
       <table className="data-table">
         <thead>
           <tr>
-            <th scope="col" style={{ minWidth: "13rem" }}>Joueur</th>
-            <th scope="col">Equipe</th>
-            <th scope="col">Poste</th>
-            <th scope="col">Age</th>
-            <th scope="col">Taille</th>
-            <th scope="col">Masse</th>
-            <th scope="col">Tests</th>
-            <th scope="col">Statut</th>
+            <th scope="col" style={{ minWidth: "13rem" }}>{t("squad.player")}</th>
+            <th scope="col">{t("players.team")}</th>
+            <th scope="col">{t("squad.position")}</th>
+            <th scope="col">{t("squad.age")}</th>
+            <th scope="col">{t("players.height")}</th>
+            <th scope="col">{t("players.weight")}</th>
+            <th scope="col">{t("players.tests")}</th>
+            <th scope="col">{t("common.status")}</th>
           </tr>
         </thead>
         <tbody>
@@ -89,7 +90,7 @@ async function PlayersTable({ user }: { user: CurrentUser }) {
                 </Link>
               </td>
               <td style={{ color: "var(--text-secondary)" }}>
-                {POSITION_LABELS[player.position as Position]?.fr ?? player.position}
+                {POSITION_LABELS[player.position as Position]?.[locale] ?? player.position}
               </td>
               <td className="tabular">{ageExact(player.birthDate).toFixed(0)}</td>
               <td className="tabular">{player.heightCm ? `${player.heightCm} cm` : "—"}</td>
@@ -107,7 +108,7 @@ async function PlayersTable({ user }: { user: CurrentUser }) {
                           : "neutral"
                   }
                 >
-                  {PLAYER_STATUS_LABELS[player.status as PlayerStatus]?.fr ?? player.status}
+                  {PLAYER_STATUS_LABELS[player.status as PlayerStatus]?.[locale] ?? player.status}
                 </Badge>
               </td>
             </tr>
@@ -119,14 +120,11 @@ async function PlayersTable({ user }: { user: CurrentUser }) {
 }
 
 export default async function PlayersPage() {
-  const user = await requireUser();
+  const [user, t] = await Promise.all([requireUser(), getT()]);
 
   return (
     <>
-      <PageHeader
-        title="Joueurs"
-        description="Tous les joueurs des equipes auxquelles vous avez acces."
-      />
+      <PageHeader title={t("players.title")} description={t("players.subtitle")} />
       <Panel padded={false} className="p-1">
         <Suspense fallback={<SkeletonTable rows={12} columns={6} />}>
           <PlayersTable user={user} />

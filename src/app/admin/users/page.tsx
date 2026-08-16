@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { toggleUserAction } from "@/app/actions/admin";
 import { impersonateAction } from "@/app/actions/auth";
 import { ROLES, ROLE_LABELS, type Role } from "@/lib/constants";
+import { getLocale, getLocaleTag, getT } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/utils";
 import { Alert, Badge, PageHeader, Panel, PanelHeader } from "@/components/ui/primitives";
 import { Skeleton, SkeletonTable } from "@/components/ui/skeleton";
@@ -14,6 +15,7 @@ import { CreateUserForm, ResetPasswordForm } from "./forms";
 export const dynamic = "force-dynamic";
 
 async function UsersTable() {
+  const [t, locale, tag] = await Promise.all([getT(), getLocale(), getLocaleTag()]);
   const users = await prisma.user.findMany({
     include: {
       organization: { select: { name: true, isActive: true } },
@@ -24,18 +26,21 @@ async function UsersTable() {
 
   return (
     <>
-      <PanelHeader title={`${users.length} comptes`} subtitle="Classes par role puis par nom" />
+      <PanelHeader
+        title={`${users.length} ${t("admin.accounts")}`}
+        subtitle={t("admin.accountsSubtitle")}
+      />
       <div className="scroll-x">
         <table className="data-table">
           <thead>
             <tr>
-              <th scope="col" style={{ minWidth: "13rem" }}>Utilisateur</th>
-              <th scope="col">Role</th>
-              <th scope="col">Club</th>
-              <th scope="col">Equipes</th>
-              <th scope="col">Derniere connexion</th>
-              <th scope="col">Statut</th>
-              <th scope="col">Actions</th>
+              <th scope="col" style={{ minWidth: "13rem" }}>{t("admin.user")}</th>
+              <th scope="col">{t("settings.role")}</th>
+              <th scope="col">{t("admin.club")}</th>
+              <th scope="col">{t("admin.teams")}</th>
+              <th scope="col">{t("admin.lastLogin")}</th>
+              <th scope="col">{t("common.status")}</th>
+              <th scope="col">{t("common.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -49,24 +54,24 @@ async function UsersTable() {
                 </td>
                 <td>
                   <Badge tone={user.role === "OWNER" ? "brand" : "neutral"}>
-                    {ROLE_LABELS[user.role as Role]?.fr ?? user.role}
+                    {ROLE_LABELS[user.role as Role]?.[locale] ?? user.role}
                   </Badge>
                 </td>
                 <td style={{ color: "var(--text-secondary)" }}>{user.organization?.name ?? "—"}</td>
                 <td className="tabular">{user._count.memberships}</td>
                 <td style={{ color: "var(--text-muted)" }}>
-                  {user.lastLoginAt ? formatDate(user.lastLoginAt) : "jamais"}
+                  {user.lastLoginAt ? formatDate(user.lastLoginAt, tag) : t("common.never")}
                 </td>
                 <td>
                   <Badge tone={user.isActive ? "success" : "danger"}>
-                    {user.isActive ? "Actif" : "Desactive"}
+                    {user.isActive ? t("admin.active") : t("admin.disabled")}
                   </Badge>
                   {user.mustChangePw ? (
                     <span
                       className="block text-[0.6875rem] mt-0.5"
                       style={{ color: "var(--warning)" }}
                     >
-                      mot de passe provisoire
+                      {t("admin.temporaryPassword")}
                     </span>
                   ) : null}
                 </td>
@@ -85,8 +90,8 @@ async function UsersTable() {
                           type="submit"
                           className="btn btn-ghost"
                           style={{ minHeight: "2rem", padding: "0.25rem 0.5rem" }}
-                          title={user.isActive ? "Desactiver le compte" : "Reactiver le compte"}
-                          aria-label={user.isActive ? "Desactiver le compte" : "Reactiver le compte"}
+                          title={user.isActive ? t("admin.disableAccount") : t("admin.enableAccount")}
+                          aria-label={user.isActive ? t("admin.disableAccount") : t("admin.enableAccount")}
                         >
                           <Power size={14} aria-hidden="true" />
                         </button>
@@ -102,8 +107,8 @@ async function UsersTable() {
                           type="submit"
                           className="btn btn-ghost"
                           style={{ minHeight: "2rem", padding: "0.25rem 0.5rem" }}
-                          title="Consulter l'application avec ce compte"
-                          aria-label="Consulter l'application avec ce compte"
+                          title={t("admin.impersonate")}
+                          aria-label={t("admin.impersonate")}
                           disabled={!user.isActive}
                         >
                           <Eye size={14} aria-hidden="true" />
@@ -120,9 +125,7 @@ async function UsersTable() {
 
       <div className="mt-3">
         <Alert tone="info">
-          L'icone en forme d'oeil ouvre l'application avec le compte du client, pour diagnostiquer un
-          probleme. L'action est enregistree dans le journal d'audit et un bandeau reste visible
-          pendant toute la session. Vous ne voyez jamais son mot de passe.
+          {t("admin.impersonateNote")}
         </Alert>
       </div>
     </>
@@ -130,7 +133,9 @@ async function UsersTable() {
 }
 
 async function FormsSection({ owner }: { owner: CurrentUser }) {
-  const [organizations, users] = await Promise.all([
+  const [t, locale, organizations, users] = await Promise.all([
+    getT(),
+    getLocale(),
     prisma.organization.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.user.findMany({
       where: { id: { not: owner.id } },
@@ -143,23 +148,23 @@ async function FormsSection({ owner }: { owner: CurrentUser }) {
     <>
       <Panel>
         <PanelHeader
-          title="Nouvel acces"
-          subtitle="Le compte devra changer son mot de passe"
+title={t("admin.newAccess")}
+          subtitle={t("admin.newAccessSubtitle")}
           icon={<UserPlus size={16} />}
         />
         <CreateUserForm
           organizations={organizations}
           roles={ROLES.filter((r) => r !== "OWNER").map((r) => ({
             value: r,
-            label: ROLE_LABELS[r].fr,
+            label: ROLE_LABELS[r][locale],
           }))}
         />
       </Panel>
 
       <Panel>
         <PanelHeader
-          title="Reinitialiser un mot de passe"
-          subtitle="Toutes ses sessions seront fermees"
+title={t("admin.resetPassword")}
+          subtitle={t("admin.resetPasswordSubtitle")}
         />
         <ResetPasswordForm
           users={users.map((u) => ({ id: u.id, label: `${u.name} · ${u.email}` }))}
@@ -192,13 +197,13 @@ function FormsSkeleton() {
 }
 
 export default async function UsersPage() {
-  const owner = await requireOwner();
+  const [owner, t] = await Promise.all([requireOwner(), getT()]);
 
   return (
     <>
       <PageHeader
-        title="Utilisateurs"
-        description="Tous les comptes de la plateforme, tous clubs confondus."
+title={t("admin.users")}
+        description={t("admin.usersSubtitle")}
       />
 
       <div className="grid lg:grid-cols-3 gap-4">

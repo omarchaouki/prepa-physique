@@ -15,12 +15,26 @@
     "db:postgres": "node scripts/set-db-provider.mjs postgresql",
     "verify:science": "tsx scripts/verify-science.ts",
     "verify:norms": "tsx scripts/check-percentiles.ts",
-    "typecheck": "tsc --noEmit"
+    "verify:db": "tsx scripts/check-connection.ts",
+    "owner:ensure": "tsx scripts/ensure-owner.ts",
+    "typecheck": "tsc --noEmit",
+    "android:assets": "python scripts/generate-android-assets.py",
+    "android:sync": "cap sync android",
+    "android:apk": "node scripts/build-apk.mjs",
+    "android:keystore": "node scripts/create-keystore.mjs",
+    "android:studio": "cap open android"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/app": "^6.0.3",
+    "@capacitor/cli": "^6.2.1",
+    "@capacitor/core": "^6.2.1",
+    "@capacitor/network": "^6.0.4",
+    "@capacitor/splash-screen": "^6.0.4",
+    "@capacitor/status-bar": "^6.0.3",
     "@prisma/client": "^6.2.1",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",

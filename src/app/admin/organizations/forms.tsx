@@ -7,15 +7,17 @@ import { Loader2 } from "lucide-react";
 import { createOrganizationAction, createTeamAction } from "@/app/actions/admin";
 import type { ActionState } from "@/app/actions/auth";
 import { CATEGORIES, TEAM_LEVELS, TEAM_LEVEL_LABELS, type TeamLevel } from "@/lib/constants";
+import { useLocale, useT } from "@/lib/i18n/client";
 
 function SubmitButton({ label }: { label: string }) {
+  const t = useT();
   const { pending } = useFormStatus();
   return (
     <button type="submit" className="btn btn-primary w-full" disabled={pending}>
       {pending ? (
         <>
           <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-          Enregistrement
+          {t("common.saving")}
         </>
       ) : (
         label
@@ -51,6 +53,7 @@ function Feedback({ state }: { state: ActionState }) {
 }
 
 export function CreateOrganizationForm({ plans }: { plans: string[] }) {
+  const t = useT();
   const [state, formAction] = useActionState<ActionState, FormData>(createOrganizationAction, {});
 
   return (
@@ -59,7 +62,7 @@ export function CreateOrganizationForm({ plans }: { plans: string[] }) {
 
       <div>
         <label className="label" htmlFor="org-name">
-          Nom du club *
+          {t("admin.clubName")} *
         </label>
         <input id="org-name" name="name" type="text" required minLength={2} className="field" />
       </div>
@@ -67,13 +70,13 @@ export function CreateOrganizationForm({ plans }: { plans: string[] }) {
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="label" htmlFor="org-city">
-            Ville
+            {t("admin.city")}
           </label>
           <input id="org-city" name="city" type="text" className="field" />
         </div>
         <div>
           <label className="label" htmlFor="org-country">
-            Pays
+            {t("admin.country")}
           </label>
           <input id="org-country" name="country" type="text" className="field" />
         </div>
@@ -81,7 +84,7 @@ export function CreateOrganizationForm({ plans }: { plans: string[] }) {
 
       <div>
         <label className="label" htmlFor="org-plan">
-          Forfait
+          {t("admin.plan")}
         </label>
         <select id="org-plan" name="plan" className="field cursor-pointer" defaultValue="TRIAL">
           {plans.map((plan) => (
@@ -91,25 +94,25 @@ export function CreateOrganizationForm({ plans }: { plans: string[] }) {
           ))}
         </select>
         <p className="text-[0.75rem] mt-1" style={{ color: "var(--text-muted)" }}>
-          Le forfait fixe le nombre maximal d'equipes et de joueurs.
+          {t("admin.planHint")}
         </p>
       </div>
 
       <div>
         <label className="label" htmlFor="org-expires">
-          Date de fin d'acces
+          {t("admin.accessEnd")}
         </label>
         <input id="org-expires" name="expiresAt" type="date" className="field" />
       </div>
 
       <div>
         <label className="label" htmlFor="org-notes">
-          Notes internes
+          {t("admin.internalNotes")}
         </label>
         <textarea id="org-notes" name="notes" rows={2} className="field" />
       </div>
 
-      <SubmitButton label="Creer le club" />
+      <SubmitButton label={t("admin.createClub")} />
     </form>
   );
 }
@@ -119,12 +122,14 @@ export function CreateTeamForm({
 }: {
   organizations: Array<{ id: string; name: string }>;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const [state, formAction] = useActionState<ActionState, FormData>(createTeamAction, {});
 
   if (organizations.length === 0) {
     return (
       <p className="text-[0.8125rem]" style={{ color: "var(--text-muted)" }}>
-        Creez d'abord un club.
+        {t("admin.createClubFirst")}
       </p>
     );
   }
@@ -135,7 +140,7 @@ export function CreateTeamForm({
 
       <div>
         <label className="label" htmlFor="team-org">
-          Club *
+          {t("admin.club")} *
         </label>
         <select id="team-org" name="organizationId" required className="field cursor-pointer">
           {organizations.map((organization) => (
@@ -148,7 +153,7 @@ export function CreateTeamForm({
 
       <div>
         <label className="label" htmlFor="team-name">
-          Nom de l'equipe *
+          {t("admin.teamName")} *
         </label>
         <input id="team-name" name="name" type="text" required minLength={2} className="field" />
       </div>
@@ -156,7 +161,7 @@ export function CreateTeamForm({
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="label" htmlFor="team-category">
-            Categorie
+            {t("admin.category")}
           </label>
           <select id="team-category" name="category" className="field cursor-pointer" defaultValue="SENIOR">
             {CATEGORIES.map((category) => (
@@ -168,11 +173,11 @@ export function CreateTeamForm({
         </div>
         <div>
           <label className="label" htmlFor="team-sex">
-            Sexe
+            {t("admin.sex")}
           </label>
           <select id="team-sex" name="sex" className="field cursor-pointer" defaultValue="M">
-            <option value="M">Masculin</option>
-            <option value="F">Feminin</option>
+            <option value="M">{t("teams.masculine")}</option>
+            <option value="F">{t("teams.feminine")}</option>
           </select>
         </div>
       </div>
@@ -180,19 +185,19 @@ export function CreateTeamForm({
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="label" htmlFor="team-level">
-            Niveau
+            {t("admin.level")}
           </label>
           <select id="team-level" name="level" className="field cursor-pointer" defaultValue="AMATEUR">
             {TEAM_LEVELS.map((level) => (
               <option key={level} value={level}>
-                {TEAM_LEVEL_LABELS[level as TeamLevel].fr}
+                {TEAM_LEVEL_LABELS[level as TeamLevel][locale]}
               </option>
             ))}
           </select>
         </div>
         <div>
           <label className="label" htmlFor="team-season">
-            Saison
+            {t("admin.season")}
           </label>
           <input
             id="team-season"
@@ -205,11 +210,10 @@ export function CreateTeamForm({
       </div>
 
       <p className="text-[0.75rem]" style={{ color: "var(--text-muted)" }}>
-        La categorie et le niveau determinent la population de reference utilisee pour les
-        percentiles.
+        {t("admin.teamPopulationHint")}
       </p>
 
-      <SubmitButton label="Creer l'equipe" />
+      <SubmitButton label={t("admin.createTeam")} />
     </form>
   );
 }

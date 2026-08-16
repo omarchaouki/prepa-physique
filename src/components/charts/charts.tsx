@@ -25,6 +25,7 @@ import {
   ZAxis,
 } from "recharts";
 
+import { useLocaleTag, useT } from "@/lib/i18n/client";
 import { formatDateShort, formatNumber } from "@/lib/utils";
 
 const AXIS = { fontSize: 11, fill: "var(--text-muted)" } as const;
@@ -61,19 +62,21 @@ export function TrendChart({
   higherIsBetter?: boolean;
   height?: number;
 }) {
+  const t = useT();
+  const tag = useLocaleTag();
   if (data.length === 0) {
     return (
       <div
         className="grid place-items-center text-sm"
         style={{ height, color: "var(--text-muted)" }}
       >
-        Aucune mesure enregistree
+        {t("chart.noMeasurement")}
       </div>
     );
   }
 
   const chartData = data.map((point) => ({
-    label: formatDateShort(point.date),
+    label: formatDateShort(point.date, tag),
     value: point.value,
   }));
 
@@ -99,11 +102,11 @@ export function TrendChart({
           tickLine={false}
           domain={[min - padding, max + padding]}
           width={48}
-          tickFormatter={(v: number) => formatNumber(v, v > 100 ? 0 : 2)}
+          tickFormatter={(v: number) => formatNumber(v, v > 100 ? 0 : 2, tag)}
         />
         <Tooltip
           contentStyle={tooltipStyle}
-          formatter={(value: number) => [`${formatNumber(value, 2)} ${unit}`, label]}
+          formatter={(value: number) => [`${formatNumber(value, 2, tag)} ${unit}`, label]}
           cursor={{ stroke: "var(--border-strong)" }}
         />
         {referenceValue != null ? (
@@ -112,7 +115,7 @@ export function TrendChart({
             stroke="var(--text-muted)"
             strokeDasharray="4 4"
             label={{
-              value: referenceLabel ?? "Reference",
+              value: referenceLabel ?? t("chart.reference"),
               position: "insideTopRight",
               fontSize: 10,
               fill: "var(--text-muted)",
@@ -146,12 +149,12 @@ export function ProfileRadar({
   data: Array<{ label: string; percentile: number | null }>;
   height?: number;
 }) {
+  const t = useT();
   const usable = data.filter((d) => d.percentile != null);
   if (usable.length < 3) {
     return (
       <div className="grid place-items-center text-sm px-4 text-center" style={{ height, color: "var(--text-muted)" }}>
-        Il faut au moins trois qualites mesurees pour tracer le profil. Completer la batterie de
-        tests.
+        {t("chart.needThree")}
       </div>
     );
   }
@@ -174,7 +177,7 @@ export function ProfileRadar({
         />
         <Tooltip
           contentStyle={tooltipStyle}
-          formatter={(value: number) => [`${value}e percentile`, "Niveau"]}
+          formatter={(value: number) => [`${value}${t("chart.percentileSuffix")}`, t("chart.level")]}
         />
       </RadarChart>
     </ResponsiveContainer>
@@ -200,10 +203,12 @@ export function SquadBarChart({
   highlightId?: string;
   height?: number;
 }) {
+  const t = useT();
+  const tag = useLocaleTag();
   if (data.length === 0) {
     return (
       <div className="grid place-items-center text-sm" style={{ height, color: "var(--text-muted)" }}>
-        Aucune donnee pour cette metrique
+        {t("chart.noMetricData")}
       </div>
     );
   }
@@ -229,12 +234,12 @@ export function SquadBarChart({
           axisLine={false}
           tickLine={false}
           width={48}
-          tickFormatter={(v: number) => formatNumber(v, v > 100 ? 0 : 2)}
+          tickFormatter={(v: number) => formatNumber(v, v > 100 ? 0 : 2, tag)}
         />
         <Tooltip
           contentStyle={tooltipStyle}
           cursor={{ fill: "var(--surface-hover)" }}
-          formatter={(value: number) => [`${formatNumber(value, 2)} ${unit}`, "Valeur"]}
+          formatter={(value: number) => [`${formatNumber(value, 2, tag)} ${unit}`, t("common.value")]}
         />
         {squadMean != null ? (
           <ReferenceLine
@@ -242,7 +247,7 @@ export function SquadBarChart({
             stroke="var(--text-muted)"
             strokeDasharray="4 4"
             label={{
-              value: "Moyenne equipe",
+              value: t("chart.squadMean"),
               position: "insideTopRight",
               fontSize: 10,
               fill: "var(--text-muted)",
@@ -277,6 +282,8 @@ export function ForceVelocityChart({
   pmax: number;
   height?: number;
 }) {
+  const t = useT();
+  const tag = useLocaleTag();
   // La droite force vitesse relie (0, F0) a (V0, 0).
   const line = Array.from({ length: 21 }, (_, i) => {
     const velocity = (v0 * i) / 20;
@@ -296,7 +303,7 @@ export function ForceVelocityChart({
           tick={AXIS}
           axisLine={false}
           tickLine={false}
-          label={{ value: "Vitesse (m/s)", position: "insideBottom", offset: -4, fontSize: 10, fill: "var(--text-muted)" }}
+          label={{ value: `${t("chart.speed")} (m/s)`, position: "insideBottom", offset: -4, fontSize: 10, fill: "var(--text-muted)" }}
         />
         <YAxis
           yAxisId="force"
@@ -310,7 +317,7 @@ export function ForceVelocityChart({
         <Tooltip
           contentStyle={tooltipStyle}
           formatter={(value: number, name: string) => [
-            `${formatNumber(value, 2)} ${name === "Force" ? "N/kg" : "W/kg"}`,
+            `${formatNumber(value, 2, tag)} ${name === t("chart.force") ? "N/kg" : "W/kg"}`,
             name,
           ]}
           labelFormatter={(v) => `${v} m/s`}
@@ -320,7 +327,7 @@ export function ForceVelocityChart({
           yAxisId="force"
           type="linear"
           dataKey="force"
-          name="Force"
+          name={t("chart.force")}
           stroke="var(--accent)"
           strokeWidth={2.5}
           dot={false}
@@ -330,7 +337,7 @@ export function ForceVelocityChart({
           yAxisId="power"
           type="monotone"
           dataKey="power"
-          name="Puissance"
+          name={t("chart.power")}
           stroke="var(--warning)"
           strokeWidth={2}
           strokeDasharray="5 3"
@@ -368,10 +375,12 @@ export function ScatterCompare({
   yUnit: string;
   height?: number;
 }) {
+  const t = useT();
+  const tag = useLocaleTag();
   if (data.length < 2) {
     return (
       <div className="grid place-items-center text-sm px-4 text-center" style={{ height, color: "var(--text-muted)" }}>
-        Il faut au moins deux joueurs disposant des deux mesures pour tracer ce croisement.
+        {t("chart.needTwo")}
       </div>
     );
   }
@@ -405,7 +414,7 @@ export function ScatterCompare({
         <Tooltip
           contentStyle={tooltipStyle}
           cursor={{ strokeDasharray: "3 3" }}
-          formatter={(value: number, name: string) => [formatNumber(value, 2), name]}
+          formatter={(value: number, name: string) => [formatNumber(value, 2, tag), name]}
           labelFormatter={() => ""}
           content={({ payload }) => {
             if (!payload || payload.length === 0) return null;
@@ -414,10 +423,10 @@ export function ScatterCompare({
               <div style={tooltipStyle}>
                 <p className="font-medium">{point.name}</p>
                 <p className="tabular">
-                  {xLabel} : {formatNumber(point.x, 2)} {xUnit}
+                  {xLabel} : {formatNumber(point.x, 2, tag)} {xUnit}
                 </p>
                 <p className="tabular">
-                  {yLabel} : {formatNumber(point.y, 2)} {yUnit}
+                  {yLabel} : {formatNumber(point.y, 2, tag)} {yUnit}
                 </p>
               </div>
             );
@@ -450,10 +459,12 @@ export function AsymmetryChart({
   warnThreshold?: number;
   dangerThreshold?: number;
 }) {
+  const t = useT();
+  const tag = useLocaleTag();
   if (items.length === 0) {
     return (
       <div className="grid place-items-center text-sm" style={{ height, color: "var(--text-muted)" }}>
-        Aucune mesure bilaterale
+        {t("chart.noBilateral")}
       </div>
     );
   }
@@ -466,7 +477,7 @@ export function AsymmetryChart({
       return {
         label: item.label,
         gap: Number(gap.toFixed(1)),
-        stronger: item.left >= item.right ? "gauche" : "droite",
+        stronger: item.left >= item.right ? t("player.left") : t("player.right"),
       };
     })
     .sort((a, b) => b.gap - a.gap);
@@ -485,7 +496,7 @@ export function AsymmetryChart({
           tickLine={false}
           unit=" %"
           label={{
-            value: "Ecart entre les deux cotes",
+            value: t("chart.gapBetweenSides"),
             position: "insideBottom",
             offset: -10,
             fontSize: 10,
@@ -504,8 +515,8 @@ export function AsymmetryChart({
           contentStyle={tooltipStyle}
           cursor={{ fill: "var(--surface-hover)" }}
           formatter={(value: number, _name: string, entry: { payload?: { stronger?: string } }) => [
-            `${formatNumber(value, 1)} %  (cote fort : ${entry.payload?.stronger ?? ""})`,
-            "Ecart",
+            `${formatNumber(value, 1, tag)} %  (${t("chart.strongSide")} : ${entry.payload?.stronger ?? ""})`,
+            t("chart.gap"),
           ]}
         />
         <ReferenceLine
@@ -520,7 +531,7 @@ export function AsymmetryChart({
           strokeDasharray="4 3"
           label={{ value: `${dangerThreshold} %`, position: "top", fontSize: 10, fill: "var(--danger)" }}
         />
-        <Bar dataKey="gap" name="Ecart" radius={[0, 3, 3, 0]} isAnimationActive={false}>
+        <Bar dataKey="gap" name={t("chart.gap")} radius={[0, 3, 3, 0]} isAnimationActive={false}>
           {data.map((entry) => (
             <Cell
               key={entry.label}

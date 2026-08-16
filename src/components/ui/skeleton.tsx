@@ -1,3 +1,6 @@
+"use client";
+
+import { useT } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,14 +24,16 @@ export function Skeleton({
 /** Enveloppe accessible : annonce le chargement une seule fois aux lecteurs d'ecran. */
 export function LoadingRegion({
   children,
-  label = "Chargement des donnees",
+  label,
 }: {
   children: React.ReactNode;
   label?: string;
 }) {
+  const t = useT();
+  const text = label ?? t("error.loadingData");
   return (
     <div role="status" aria-live="polite" aria-busy="true">
-      <span className="sr-only">{label}</span>
+      <span className="sr-only">{text}</span>
       {children}
     </div>
   );
@@ -57,7 +62,7 @@ export function SkeletonText({
 /** Rangee d'indicateurs chiffres, meme gabarit que StatCard. */
 export function SkeletonStats({ count = 4 }: { count?: number }) {
   return (
-    <LoadingRegion label="Chargement des indicateurs">
+    <LoadingRegion>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {Array.from({ length: count }).map((_, index) => (
           <div key={index} className="panel p-3.5">
@@ -109,7 +114,7 @@ export function SkeletonTable({
   const widths = ["70%", "55%", "80%", "45%", "65%", "50%", "75%", "60%"];
 
   return (
-    <LoadingRegion label="Chargement du tableau">
+    <LoadingRegion>
       <div className="panel-sunken overflow-hidden">
         {/* Entete */}
         <div
@@ -163,7 +168,7 @@ export function SkeletonChart({ height = 240 }: { height?: number }) {
   const heights = [45, 70, 55, 85, 62, 95, 74, 58, 88, 66, 78, 50];
 
   return (
-    <LoadingRegion label="Chargement du graphique">
+    <LoadingRegion>
       <div className="flex items-end gap-2 px-2" style={{ height }}>
         {heights.map((value, index) => (
           <Skeleton key={index} className="flex-1 rounded-t-sm" style={{ height: `${value}%` }} />
@@ -181,7 +186,7 @@ export function SkeletonChart({ height = 240 }: { height?: number }) {
 /** Radar : un disque et sa legende. */
 export function SkeletonRadar({ height = 280 }: { height?: number }) {
   return (
-    <LoadingRegion label="Chargement du profil">
+    <LoadingRegion>
       <div className="grid place-items-center" style={{ height }}>
         <Skeleton className="rounded-full" style={{ width: height * 0.72, height: height * 0.72 }} />
       </div>
@@ -200,7 +205,7 @@ export function SkeletonRadar({ height = 280 }: { height?: number }) {
 /** Liste d'elements avec pastille, pour les alertes et les passations recentes. */
 export function SkeletonList({ items = 5, avatar = true }: { items?: number; avatar?: boolean }) {
   return (
-    <LoadingRegion label="Chargement de la liste">
+    <LoadingRegion>
       <ul className="divide-y" style={{ borderColor: "var(--border-subtle)" }}>
         {Array.from({ length: items }).map((_, index) => (
           <li key={index} className="flex items-center gap-3 py-2.5">
@@ -220,7 +225,7 @@ export function SkeletonList({ items = 5, avatar = true }: { items?: number; ava
 /** Grille de cartes, pour les equipes et les clubs. */
 export function SkeletonCards({ count = 3, columns = 3 }: { count?: number; columns?: number }) {
   return (
-    <LoadingRegion label="Chargement des cartes">
+    <LoadingRegion>
       <div
         className="grid gap-3"
         style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${100 / columns}%, 1fr))` }}

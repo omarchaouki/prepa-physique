@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
 
 import { POSITION_LABELS, PLAYER_STATUS_LABELS, type PlayerStatus, type Position } from "@/lib/constants";
+import { useLocale, useLocaleTag, useT } from "@/lib/i18n/client";
 import { formatNumber, percentileColor } from "@/lib/utils";
 import { Badge } from "@/components/ui/primitives";
 
@@ -49,6 +50,9 @@ export function SquadTable({
   columns: SquadTableColumn[];
   squadStats: Record<string, { mean: number; sd: number; n: number }>;
 }) {
+  const t = useT();
+  const locale = useLocale();
+  const tag = useLocaleTag();
   const [query, setQuery] = useState("");
   const [positionFilter, setPositionFilter] = useState("ALL");
   const [sortKey, setSortKey] = useState<SortKey>("name");
@@ -111,21 +115,21 @@ export function SquadTable({
             aria-hidden="true"
           />
           <label className="sr-only" htmlFor="squad-search">
-            Rechercher un joueur
+            {t("squad.searchPlayer")}
           </label>
           <input
             id="squad-search"
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Rechercher un joueur"
+            placeholder={t("squad.searchPlayer")}
             className="field pl-8"
           />
         </div>
 
         <div>
           <label className="sr-only" htmlFor="squad-position">
-            Filtrer par poste
+            {t("squad.filterPosition")}
           </label>
           <select
             id="squad-position"
@@ -134,17 +138,17 @@ export function SquadTable({
             className="field cursor-pointer"
             style={{ width: "auto", minWidth: "9rem" }}
           >
-            <option value="ALL">Tous les postes</option>
+            <option value="ALL">{t("squad.allPositions")}</option>
             {positions.map((position) => (
               <option key={position} value={position}>
-                {POSITION_LABELS[position as Position]?.fr ?? position}
+                {POSITION_LABELS[position as Position]?.[locale] ?? position}
               </option>
             ))}
           </select>
         </div>
 
         <span className="text-[0.8125rem] tabular ml-auto" style={{ color: "var(--text-muted)" }}>
-          {filtered.length} joueur{filtered.length > 1 ? "s" : ""}
+          {filtered.length} {filtered.length > 1 ? t("common.players") : t("common.player")}
         </span>
       </div>
 
@@ -152,8 +156,7 @@ export function SquadTable({
       <div className="scroll-x panel" style={{ maxHeight: "70vh", overflowY: "auto" }}>
         <table className="data-table">
           <caption className="sr-only">
-            Effectif avec les dernieres valeurs mesurees et leur percentile par rapport a la
-            population de reference
+            {t("squad.caption")}
           </caption>
           <thead>
             <tr>
@@ -164,7 +167,7 @@ export function SquadTable({
                   className="inline-flex items-center gap-1 cursor-pointer"
                   aria-sort={sortKey === "name" ? (sortAsc ? "ascending" : "descending") : "none"}
                 >
-                  Joueur <SortIcon column="name" />
+                  {t("squad.player")} <SortIcon column="name" />
                 </button>
               </th>
               <th scope="col">
@@ -173,7 +176,7 @@ export function SquadTable({
                   onClick={() => toggleSort("position")}
                   className="inline-flex items-center gap-1 cursor-pointer"
                 >
-                  Poste <SortIcon column="position" />
+                  {t("squad.position")} <SortIcon column="position" />
                 </button>
               </th>
               <th scope="col">
@@ -182,7 +185,7 @@ export function SquadTable({
                   onClick={() => toggleSort("age")}
                   className="inline-flex items-center gap-1 cursor-pointer"
                 >
-                  Age <SortIcon column="age" />
+                  {t("squad.age")} <SortIcon column="age" />
                 </button>
               </th>
               {columns.map((column) => (
@@ -204,7 +207,7 @@ export function SquadTable({
                   onClick={() => toggleSort("alerts")}
                   className="inline-flex items-center gap-1 cursor-pointer"
                 >
-                  Alertes <SortIcon column="alerts" />
+                  {t("squad.alerts")} <SortIcon column="alerts" />
                 </button>
               </th>
             </tr>
@@ -236,7 +239,7 @@ export function SquadTable({
                             color: row.status === "INJURED" ? "var(--danger)" : "var(--warning)",
                           }}
                         >
-                          {PLAYER_STATUS_LABELS[row.status as PlayerStatus]?.fr ?? row.status}
+                          {PLAYER_STATUS_LABELS[row.status as PlayerStatus]?.[locale] ?? row.status}
                         </span>
                       ) : null}
                     </span>
@@ -268,7 +271,7 @@ export function SquadTable({
                               : undefined
                           }
                         >
-                          {formatNumber(cell.value, column.decimals)}
+                          {formatNumber(cell.value, column.decimals, tag)}
                         </span>
                         {cell.percentile != null ? (
                           <span
@@ -277,7 +280,7 @@ export function SquadTable({
                               color: percentileColor(cell.percentile),
                               background: "var(--surface-sunken)",
                             }}
-                            title={`${cell.percentile}e percentile de la population de reference`}
+                            title={`${cell.percentile}${t("chart.percentileSuffix")}`}
                           >
                             {cell.percentile}
                           </span>
@@ -288,12 +291,12 @@ export function SquadTable({
                               color: THRESHOLD_COLOR[cell.thresholdStatus],
                               background: "var(--surface-sunken)",
                             }}
-                            title="Lecture par seuil et non par percentile"
+                            title={t("player.thresholdTitle")}
                           >
                             {cell.thresholdStatus === "bon"
-                              ? "ok"
+                              ? t("squad.thresholdOk")
                               : cell.thresholdStatus === "vigilance"
-                                ? "vig"
+                                ? t("squad.thresholdWarn")
                                 : "!"}
                           </span>
                         ) : null}
@@ -339,7 +342,7 @@ export function SquadTable({
                     fontWeight: 600,
                   }}
                 >
-                  Moyenne du groupe
+                  {t("squad.groupAverage")}
                 </td>
                 <td />
                 <td className="tabular" style={{ fontWeight: 600 }}>
@@ -353,13 +356,13 @@ export function SquadTable({
                     values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
                   return (
                     <td key={column.key} className="tabular" style={{ fontWeight: 600 }}>
-                      {average === null ? "—" : formatNumber(average, column.decimals)}
+                      {average === null ? "—" : formatNumber(average, column.decimals, tag)}
                       {squadStats[column.key] ? (
                         <span
                           className="ml-1 text-[0.6875rem] font-normal"
                           style={{ color: "var(--text-muted)" }}
                         >
-                          ± {formatNumber(squadStats[column.key].sd, column.decimals)}
+                          ± {formatNumber(squadStats[column.key].sd, column.decimals, tag)}
                         </span>
                       ) : null}
                     </td>
@@ -376,16 +379,12 @@ export function SquadTable({
 
       {filtered.length === 0 ? (
         <p className="text-center text-sm py-8" style={{ color: "var(--text-muted)" }}>
-          Aucun joueur ne correspond a cette recherche.
+          {t("squad.noMatch")}
         </p>
       ) : null}
 
       <p className="text-[0.75rem] mt-2 leading-relaxed" style={{ color: "var(--text-muted)" }}>
-        Le petit chiffre a cote de chaque valeur est le percentile par rapport a la population de
-        reference, 50 correspondant a la moyenne publiee pour cette categorie. Les indices
-        d'asymetrie sont lus par seuil et non par percentile : leur distribution est bornee a zero,
-        un rang gaussien y serait trompeur. Les seuils retenus sont 10% pour la vigilance et 15%
-        pour l'alerte.
+        {t("squad.legend")}
       </p>
     </div>
   );

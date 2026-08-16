@@ -4,6 +4,7 @@ import { Activity, Building2, ClipboardList, ScrollText, Users, UsersRound } fro
 
 import { requireOwner } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getLocaleTag, getT } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/utils";
 import { Badge, PageHeader, Panel, PanelHeader, StatCard } from "@/components/ui/primitives";
 import { SkeletonList, SkeletonStats, SkeletonTable } from "@/components/ui/skeleton";
@@ -11,6 +12,7 @@ import { SkeletonList, SkeletonStats, SkeletonTable } from "@/components/ui/skel
 export const dynamic = "force-dynamic";
 
 async function PlatformStats() {
+  const t = await getT();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
 
   const [organizations, activeOrganizations, users, activeUsers, teams, players, sessions, metrics, recentLogins] =
@@ -29,28 +31,28 @@ async function PlatformStats() {
   return (
     <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <StatCard
-        label="Clubs"
+label={t("admin.clubs")}
         value={organizations}
-        hint={`${activeOrganizations} actifs`}
+hint={`${activeOrganizations} ${t("admin.clubsActive")}`}
         tone={activeOrganizations < organizations ? "warning" : "neutral"}
         icon={<Building2 size={15} />}
       />
       <StatCard
-        label="Utilisateurs"
+label={t("admin.users")}
         value={users}
-        hint={`${activeUsers} actifs · ${recentLogins} connectes sur 30 jours`}
+hint={`${activeUsers} ${t("admin.usersActive")} · ${recentLogins} ${t("admin.usersRecent")}`}
         icon={<Users size={15} />}
       />
       <StatCard
-        label="Equipes"
+label={t("admin.teams")}
         value={teams}
-        hint={`${players} joueurs`}
+hint={`${players} ${t("common.players")}`}
         icon={<UsersRound size={15} />}
       />
       <StatCard
-        label="Donnees"
+label={t("admin.data")}
         value={metrics.toLocaleString("fr-FR")}
-        hint={`${sessions} passations enregistrees`}
+hint={`${sessions} ${t("admin.dataHint")}`}
         icon={<Activity size={15} />}
       />
     </section>
@@ -58,6 +60,7 @@ async function PlatformStats() {
 }
 
 async function ClientsTable() {
+  const t = await getT();
   const organizations = await prisma.organization.findMany({
     include: {
       _count: { select: { teams: true, users: true } },
@@ -72,13 +75,13 @@ async function ClientsTable() {
       <table className="data-table">
         <thead>
           <tr>
-            <th scope="col">Club</th>
-            <th scope="col">Forfait</th>
-            <th scope="col">Equipes</th>
-            <th scope="col">Joueurs</th>
-            <th scope="col">Passations</th>
-            <th scope="col">Utilisateurs</th>
-            <th scope="col">Statut</th>
+            <th scope="col">{t("admin.club")}</th>
+            <th scope="col">{t("admin.plan")}</th>
+            <th scope="col">{t("admin.teams")}</th>
+            <th scope="col">{t("dashboard.statPlayers")}</th>
+            <th scope="col">{t("dashboard.statSessions")}</th>
+            <th scope="col">{t("admin.users")}</th>
+            <th scope="col">{t("common.status")}</th>
           </tr>
         </thead>
         <tbody>
@@ -103,7 +106,7 @@ async function ClientsTable() {
                 <td className="tabular">{organization._count.users}</td>
                 <td>
                   <Badge tone={organization.isActive ? "success" : "danger"}>
-                    {organization.isActive ? "Actif" : "Suspendu"}
+                    {organization.isActive ? t("admin.active") : t("admin.suspended")}
                   </Badge>
                 </td>
               </tr>
@@ -116,12 +119,13 @@ async function ClientsTable() {
 }
 
 async function RecentActivity() {
+  const [t, tag] = await Promise.all([getT(), getLocaleTag()]);
   const entries = await prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 8 });
 
   if (entries.length === 0) {
     return (
       <p className="text-sm py-6 text-center" style={{ color: "var(--text-muted)" }}>
-        Aucune action enregistree.
+        {t("admin.noActivity")}
       </p>
     );
   }
@@ -136,7 +140,7 @@ async function RecentActivity() {
               className="shrink-0 tabular text-[0.75rem]"
               style={{ color: "var(--text-muted)" }}
             >
-              {formatDate(entry.createdAt)}
+              {formatDate(entry.createdAt, tag)}
             </span>
           </div>
           <p className="truncate" style={{ color: "var(--text-muted)" }}>
@@ -149,13 +153,13 @@ async function RecentActivity() {
 }
 
 export default async function AdminOverviewPage() {
-  await requireOwner();
+  const [, t] = await Promise.all([requireOwner(), getT()]);
 
   return (
     <>
       <PageHeader
-        title="Panel proprietaire"
-        description="Vue globale de tous les clients, de leur activite et des actions realisees dans l'application."
+title={t("admin.title")}
+        description={t("admin.subtitle")}
       />
 
       <div className="mb-4">
@@ -167,12 +171,12 @@ export default async function AdminOverviewPage() {
       <div className="grid lg:grid-cols-3 gap-4">
         <Panel className="lg:col-span-2">
           <PanelHeader
-            title="Clubs clients"
-            subtitle="Volume de donnees par organisation"
+title={t("admin.clientClubs")}
+            subtitle={t("admin.clientClubsSubtitle")}
             icon={<Building2 size={16} />}
             action={
               <Link href="/admin/organizations" className="btn btn-ghost">
-                Gerer
+                {t("admin.manage")}
               </Link>
             }
           />
@@ -183,12 +187,12 @@ export default async function AdminOverviewPage() {
 
         <Panel>
           <PanelHeader
-            title="Activite recente"
-            subtitle="Huit dernieres actions"
+title={t("admin.recentActivity")}
+            subtitle={t("admin.recentActivitySubtitle")}
             icon={<ScrollText size={16} />}
             action={
               <Link href="/admin/audit" className="btn btn-ghost">
-                Tout voir
+                {t("common.viewAll")}
               </Link>
             }
           />
@@ -200,26 +204,26 @@ export default async function AdminOverviewPage() {
 
       <Panel className="mt-4">
         <PanelHeader
-          title="Acces rapide"
-          subtitle="Les operations les plus frequentes"
+title={t("admin.quickAccess")}
+          subtitle={t("admin.quickAccessSubtitle")}
           icon={<ClipboardList size={16} />}
         />
         <div className="grid sm:grid-cols-3 gap-3">
           {[
             {
               href: "/admin/organizations",
-              label: "Creer un club",
-              description: "Ouvrir un nouveau compte client et definir son forfait.",
+label: t("admin.createClub"),
+              description: t("admin.createClubBody"),
             },
             {
               href: "/admin/users",
-              label: "Creer un acces",
-              description: "Ajouter un preparateur ou un administrateur de club.",
+label: t("admin.createAccess"),
+              description: t("admin.createAccessBody"),
             },
             {
               href: "/admin/audit",
-              label: "Consulter le journal",
-              description: "Verifier qui a fait quoi et quand.",
+label: t("admin.viewAudit"),
+              description: t("admin.viewAuditBody"),
             },
           ].map((item) => (
             <Link

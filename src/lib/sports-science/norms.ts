@@ -184,9 +184,9 @@ export const NORMS: NormRow[] = [
   N("vo2max_ift", "U15", "M", 46.5, 3.6, true, BUCHHEIT),
   N("vo2max_ift", "SENIOR_PRO", "F", 45.0, 3.2, true, BUCHHEIT),
   N("vo2max_ift", "SENIOR_PRO", "M", 47.5, 3.5, true, BUCHHEIT, "GK"),
-  N("vo2max_mas", "SENIOR_PRO", "M", 59.5, 3.5, true, "VMA x 3.5"),
-  N("vo2max_mas", "U19", "M", 57.8, 3.5, true, "VMA x 3.5"),
-  N("vo2max_mas", "U17", "M", 56.0, 3.5, true, "VMA x 3.5"),
+  N("vo2max_mas", "SENIOR_PRO", "M", 59.5, 3.5, true, "MAS x 3.5"),
+  N("vo2max_mas", "U19", "M", 57.8, 3.5, true, "MAS x 3.5"),
+  N("vo2max_mas", "U17", "M", 56.0, 3.5, true, "MAS x 3.5"),
   N("yoyo_ir1_distance", "SENIOR_PRO", "M", 2100, 400, true, BANGSBO),
   N("yoyo_ir1_distance", "SENIOR_SEMIPRO", "M", 1800, 400, true, BANGSBO),
   N("yoyo_ir1_distance", "U19", "M", 1900, 400, true, BANGSBO),
@@ -203,7 +203,7 @@ export const NORMS: NormRow[] = [
   N("mas", "U19", "M", 16.5, 1.0, true, BUCHHEIT),
   N("mas", "U17", "M", 16.0, 1.0, true, BUCHHEIT),
   N("rsa_decrement", "SENIOR_PRO", "M", 4.2, 1.5, false, "Impellizzeri et al. 2008"),
-  N("bronco_time", "SENIOR_PRO", "M", 300, 22, false, "Reperes de terrain rugby et football"),
+  N("bronco_time", "SENIOR_PRO", "M", 300, 22, false, "Rugby and football field reference values"),
   N("asr", "SENIOR_PRO", "M", 13.0, 2.0, true, BUCHHEIT),
 
   // --- Changement de direction ---------------------------------------------

@@ -6,6 +6,7 @@ import { Loader2, RefreshCw } from "lucide-react";
 
 import { createUserAction, resetUserPasswordAction } from "@/app/actions/admin";
 import type { ActionState } from "@/app/actions/auth";
+import { useT } from "@/lib/i18n/client";
 
 /** Mot de passe provisoire lisible, sans caracteres ambigus. */
 const generatePassword = (): string => {
@@ -16,13 +17,14 @@ const generatePassword = (): string => {
 };
 
 function SubmitButton({ label }: { label: string }) {
+  const t = useT();
   const { pending } = useFormStatus();
   return (
     <button type="submit" className="btn btn-primary w-full" disabled={pending}>
       {pending ? (
         <>
           <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-          Enregistrement
+          {t("common.saving")}
         </>
       ) : (
         label
@@ -58,12 +60,13 @@ function Feedback({ state }: { state: ActionState }) {
 }
 
 function PasswordField({ id, name }: { id: string; name: string }) {
+  const t = useT();
   const [value, setValue] = useState("");
 
   return (
     <div>
       <label className="label" htmlFor={id}>
-        Mot de passe provisoire *
+        {t("admin.temporaryPasswordLabel")} *
       </label>
       <div className="flex gap-2">
         <input
@@ -81,14 +84,14 @@ function PasswordField({ id, name }: { id: string; name: string }) {
           type="button"
           onClick={() => setValue(generatePassword())}
           className="btn btn-secondary shrink-0"
-          aria-label="Generer un mot de passe"
-          title="Generer un mot de passe"
+aria-label={t("admin.generatePassword")}
+          title={t("admin.generatePassword")}
         >
           <RefreshCw size={15} aria-hidden="true" />
         </button>
       </div>
       <p className="text-[0.75rem] mt-1" style={{ color: "var(--text-muted)" }}>
-        A transmettre au client par un canal sur. Il devra le changer a la premiere connexion.
+        {t("admin.temporaryPasswordHint")}
       </p>
     </div>
   );
@@ -101,6 +104,7 @@ export function CreateUserForm({
   organizations: Array<{ id: string; name: string }>;
   roles: Array<{ value: string; label: string }>;
 }) {
+  const t = useT();
   const [state, formAction] = useActionState<ActionState, FormData>(createUserAction, {});
 
   return (
@@ -109,14 +113,14 @@ export function CreateUserForm({
 
       <div>
         <label className="label" htmlFor="user-name">
-          Nom complet *
+          {t("admin.fullName")} *
         </label>
         <input id="user-name" name="name" type="text" required minLength={2} className="field" />
       </div>
 
       <div>
         <label className="label" htmlFor="user-email">
-          Adresse email *
+          {t("login.email")} *
         </label>
         <input
           id="user-email"
@@ -130,7 +134,7 @@ export function CreateUserForm({
 
       <div>
         <label className="label" htmlFor="user-role">
-          Role *
+          {t("settings.role")} *
         </label>
         <select id="user-role" name="role" className="field cursor-pointer" defaultValue="COACH">
           {roles.map((role) => (
@@ -143,10 +147,10 @@ export function CreateUserForm({
 
       <div>
         <label className="label" htmlFor="user-org">
-          Club *
+          {t("admin.club")} *
         </label>
         <select id="user-org" name="organizationId" className="field cursor-pointer" required>
-          <option value="">Selectionner un club</option>
+          <option value="">{t("admin.selectClub")}</option>
           {organizations.map((organization) => (
             <option key={organization.id} value={organization.id}>
               {organization.name}
@@ -157,31 +161,32 @@ export function CreateUserForm({
 
       <div>
         <label className="label" htmlFor="user-job">
-          Fonction
+          {t("settings.jobTitle")}
         </label>
         <input
           id="user-job"
           name="jobTitle"
           type="text"
           className="field"
-          placeholder="Preparateur physique, entraineur adjoint..."
+          placeholder={t("admin.jobTitlePlaceholder")}
         />
       </div>
 
       <PasswordField id="user-password" name="password" />
 
-      <SubmitButton label="Creer le compte" />
+      <SubmitButton label={t("admin.createAccount")} />
     </form>
   );
 }
 
 export function ResetPasswordForm({ users }: { users: Array<{ id: string; label: string }> }) {
+  const t = useT();
   const [state, formAction] = useActionState<ActionState, FormData>(resetUserPasswordAction, {});
 
   if (users.length === 0) {
     return (
       <p className="text-[0.8125rem]" style={{ color: "var(--text-muted)" }}>
-        Aucun autre compte.
+        {t("admin.noOtherAccount")}
       </p>
     );
   }
@@ -192,7 +197,7 @@ export function ResetPasswordForm({ users }: { users: Array<{ id: string; label:
 
       <div>
         <label className="label" htmlFor="reset-user">
-          Compte
+          {t("admin.account")}
         </label>
         <select id="reset-user" name="userId" className="field cursor-pointer" required>
           {users.map((user) => (
@@ -205,7 +210,7 @@ export function ResetPasswordForm({ users }: { users: Array<{ id: string; label:
 
       <PasswordField id="reset-password" name="password" />
 
-      <SubmitButton label="Reinitialiser" />
+      <SubmitButton label={t("admin.reset")} />
     </form>
   );
 }

@@ -1,12 +1,13 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { BarChart3, ChevronLeft, Plus, Users } from "lucide-react";
+import { BarChart3, ChevronLeft, Plus, Settings, Users } from "lucide-react";
 
 import { canAccessTeam, requireUser } from "@/lib/auth";
 import { getSquadOverview, getTeamHeader, metricLabel } from "@/lib/queries";
 import { TEAM_LEVEL_LABELS, type TeamLevel } from "@/lib/constants";
 import { resolvePopulation } from "@/lib/sports-science/norms";
+import { getLocale, getLocaleTag, getT } from "@/lib/i18n/server";
 import { formatNumber } from "@/lib/utils";
 import {
   Badge,
@@ -38,12 +39,8 @@ const COLUMN_CONFIG: Array<{ key: string; decimals: number; unit: string; higher
   { key: "body_fat", decimals: 1, unit: "%", higherIsBetter: false },
 ];
 
-// ---------------------------------------------------------------------------
-// Indicateurs de l'effectif
-// ---------------------------------------------------------------------------
-
 async function SquadStatsSection({ teamId }: { teamId: string }) {
-  const overview = await getSquadOverview(teamId);
+  const [overview, t] = await Promise.all([getSquadOverview(teamId), getT()]);
   if (!overview) return null;
 
   const { rows } = overview;
@@ -55,39 +52,40 @@ async function SquadStatsSection({ teamId }: { teamId: string }) {
   return (
     <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <StatCard
-        label="Effectif"
+        label={t("teams.statSquad")}
         value={rows.length}
-        hint={`${availablePlayers} disponibles`}
+        hint={`${availablePlayers} ${t("teams.statAvailable")}`}
         icon={<Users size={15} />}
       />
       <StatCard
-        label="Joueurs testes"
+        label={t("teams.statTested")}
         value={testedPlayers}
-        hint={`sur ${rows.length}`}
+        hint={`${t("common.of")} ${rows.length}`}
         tone={testedPlayers < rows.length ? "warning" : "positive"}
       />
       <StatCard
-        label="Alertes"
+        label={t("teams.statAlerts")}
         value={totalAlerts}
-        hint="sur l'ensemble du groupe"
+        hint={t("teams.statAlertsHint")}
         tone={totalAlerts > 0 ? "warning" : "positive"}
       />
       <StatCard
-        label="Alertes critiques"
+        label={t("teams.statCritical")}
         value={criticalAlerts}
-        hint="a traiter en priorite"
+        hint={t("teams.statCriticalHint")}
         tone={criticalAlerts > 0 ? "danger" : "positive"}
       />
     </section>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Tableau d'effectif et synthese statistique
-// ---------------------------------------------------------------------------
-
 async function SquadSection({ teamId }: { teamId: string }) {
-  const overview = await getSquadOverview(teamId);
+  const [overview, t, locale, tag] = await Promise.all([
+    getSquadOverview(teamId),
+    getT(),
+    getLocale(),
+    getLocaleTag(),
+  ]);
   if (!overview) return null;
 
   const { rows, squadStats } = overview;
@@ -97,7 +95,7 @@ async function SquadSection({ teamId }: { teamId: string }) {
     rows.some((row) => row.metrics[config.key] !== undefined),
   ).map((config) => ({
     key: config.key,
-    label: metricLabel(config.key),
+    label: metricLabel(config.key, locale),
     unit: config.unit,
     decimals: config.decimals,
     higherIsBetter: config.higherIsBetter,
@@ -114,24 +112,24 @@ async function SquadSection({ teamId }: { teamId: string }) {
     <>
       <Panel className="p-4">
         <PanelHeader
-          title="Effectif"
-          subtitle="Dernieres valeurs mesurees, comparees a la population de reference"
+          title={t("teams.squad")}
+          subtitle={t("teams.squadSubtitle")}
           icon={<Users size={16} />}
         />
         {rows.length === 0 ? (
           <EmptyState
-            title="Aucun joueur dans cette equipe"
-            description="Ajoutez les joueurs avant de programmer une passation de tests."
+            title={t("teams.noPlayers")}
+            description={t("teams.noPlayersBody")}
             icon={<Users size={20} />}
           />
         ) : columns.length === 0 ? (
           <EmptyState
-            title="Aucune donnee de test"
-            description="Les joueurs sont enregistres mais aucun test n'a encore ete saisi."
+            title={t("teams.noTestData")}
+            description={t("teams.noTestDataBody")}
             action={
               <Link href={`/app/sessions/new?team=${teamId}`} className="btn btn-primary">
                 <Plus size={15} aria-hidden="true" />
-                Creer une passation
+                {t("dashboard.createSession")}
               </Link>
             }
           />
@@ -143,19 +141,19 @@ async function SquadSection({ teamId }: { teamId: string }) {
       {squadStats.size > 0 ? (
         <Panel className="mt-4">
           <PanelHeader
-            title="Statistiques du groupe"
-            subtitle="Moyenne, ecart type et effectif mesure pour chaque qualite"
+            title={t("teams.groupStats")}
+            subtitle={t("teams.groupStatsSubtitle")}
             icon={<BarChart3 size={16} />}
           />
           <div className="scroll-x">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th scope="col">Metrique</th>
-                  <th scope="col">Moyenne</th>
-                  <th scope="col">Ecart type</th>
-                  <th scope="col">Coefficient de variation</th>
-                  <th scope="col">Joueurs mesures</th>
+                  <th scope="col">{t("teams.metric")}</th>
+                  <th scope="col">{t("teams.mean")}</th>
+                  <th scope="col">{t("teams.sd")}</th>
+                  <th scope="col">{t("teams.cv")}</th>
+                  <th scope="col">{t("teams.measured")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -166,13 +164,13 @@ async function SquadSection({ teamId }: { teamId: string }) {
                     const cv = stats.mean === 0 ? 0 : (stats.sd / stats.mean) * 100;
                     return (
                       <tr key={key}>
-                        <td className="font-medium">{metricLabel(key)}</td>
+                        <td className="font-medium">{metricLabel(key, locale)}</td>
                         <td className="tabular">
-                          {formatNumber(stats.mean, config.decimals)}{" "}
+                          {formatNumber(stats.mean, config.decimals, tag)}{" "}
                           <span style={{ color: "var(--text-muted)" }}>{stats.unit}</span>
                         </td>
-                        <td className="tabular">{formatNumber(stats.sd, config.decimals)}</td>
-                        <td className="tabular">{formatNumber(cv, 1)} %</td>
+                        <td className="tabular">{formatNumber(stats.sd, config.decimals, tag)}</td>
+                        <td className="tabular">{formatNumber(cv, 1, tag)} %</td>
                         <td className="tabular">{stats.n}</td>
                       </tr>
                     );
@@ -181,8 +179,7 @@ async function SquadSection({ teamId }: { teamId: string }) {
             </table>
           </div>
           <p className="text-[0.75rem] mt-2" style={{ color: "var(--text-muted)" }}>
-            Un coefficient de variation eleve signale un groupe heterogene sur cette qualite, donc un
-            besoin d'individualisation plus fort.
+            {t("teams.cvNote")}
           </p>
         </Panel>
       ) : null}
@@ -190,18 +187,25 @@ async function SquadSection({ teamId }: { teamId: string }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-
 export default async function TeamPage({ params }: { params: Promise<{ teamId: string }> }) {
   const { teamId } = await params;
 
   // Trois requetes legeres et indexees, groupees en deux allers retours :
   // le cadre de la page est donc affiche sans attendre le calcul de l'effectif.
-  const [user, team] = await Promise.all([requireUser(), getTeamHeader(teamId)]);
+  const [user, team, t, locale] = await Promise.all([
+    requireUser(),
+    getTeamHeader(teamId),
+    getT(),
+    getLocale(),
+  ]);
   if (!team) notFound();
 
   const access = await canAccessTeam(user, teamId);
   if (!access.allowed) redirect("/app/teams");
+
+  const population = resolvePopulation(team.category, team.level)
+    .replace(/_/g, " ")
+    .toLowerCase();
 
   return (
     <>
@@ -213,20 +217,26 @@ export default async function TeamPage({ params }: { params: Promise<{ teamId: s
             style={{ color: "var(--text-muted)" }}
           >
             <ChevronLeft size={14} aria-hidden="true" />
-            Equipes
+            {t("teams.title")}
           </Link>
         }
         title={team.name}
-        description={`${team.organization.name} · saison ${team.season} · population de reference ${resolvePopulation(team.category, team.level).replace(/_/g, " ").toLowerCase()}`}
+        description={`${team.organization.name} · ${t("teams.season").toLowerCase()} ${team.season} · ${t("teams.referencePopulation")} ${population}`}
         action={
           <>
+            {access.canEdit ? (
+              <Link href={`/app/teams/${team.id}/manage`} className="btn btn-secondary">
+                <Settings size={15} aria-hidden="true" />
+                {t("manage.open")}
+              </Link>
+            ) : null}
             <Link href={`/app/analytics?team=${team.id}`} className="btn btn-secondary">
               <BarChart3 size={15} aria-hidden="true" />
-              Analyses
+              {t("teams.analytics")}
             </Link>
             <Link href={`/app/sessions/new?team=${team.id}`} className="btn btn-primary">
               <Plus size={15} aria-hidden="true" />
-              Nouvelle passation
+              {t("dashboard.newSession")}
             </Link>
           </>
         }
@@ -235,9 +245,9 @@ export default async function TeamPage({ params }: { params: Promise<{ teamId: s
       <div className="flex flex-wrap items-center gap-1.5 mb-4">
         <Badge tone="brand">{team.category}</Badge>
         {team.level ? (
-          <Badge>{TEAM_LEVEL_LABELS[team.level as TeamLevel]?.fr ?? team.level}</Badge>
+          <Badge>{TEAM_LEVEL_LABELS[team.level as TeamLevel]?.[locale] ?? team.level}</Badge>
         ) : null}
-        <Badge>{team.sex === "F" ? "Feminin" : "Masculin"}</Badge>
+        <Badge>{team.sex === "F" ? t("teams.feminine") : t("teams.masculine")}</Badge>
       </div>
 
       <div className="mb-5">
@@ -250,8 +260,8 @@ export default async function TeamPage({ params }: { params: Promise<{ teamId: s
         fallback={
           <Panel className="p-4">
             <PanelHeader
-              title="Effectif"
-              subtitle="Dernieres valeurs mesurees, comparees a la population de reference"
+              title={t("teams.squad")}
+              subtitle={t("teams.squadSubtitle")}
               icon={<Users size={16} />}
             />
             <SkeletonTable rows={10} columns={7} />

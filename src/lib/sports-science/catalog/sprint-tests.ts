@@ -277,7 +277,7 @@ export const illinoisTest: TestDefinition = {
   },
   equipment: { fr: "Huit plots, chronometre ou cellules", en: "Eight cones, stopwatch or gates" },
   durationMin: 10,
-  reference: "Getchell 1979, normes Hachana et al. 2013",
+  reference: "Getchell 1979, Hachana et al. 2013",
   needsContext: ["sex"],
   fields: [{ key: "time", label: { fr: "Temps", en: "Time" }, unit: "s", type: "number", step: 0.01, min: 12, max: 30 }],
   compute: (raw, ctx) => {

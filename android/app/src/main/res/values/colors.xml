@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Couleurs de la marque, reprises des jetons de l'interface web. -->
+    <color name="brandPrimary">#1E40AF</color>
+    <color name="brandPrimaryDark">#1E3A8A</color>
+    <color name="brandAccent">#D97706</color>
+
+    <color name="colorPrimary">#1E40AF</color>
+    <color name="colorPrimaryDark">#1E3A8A</color>
+    <color name="colorAccent">#D97706</color>
+</resources>

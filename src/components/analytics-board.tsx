@@ -6,6 +6,7 @@ import { BarChart3, GitCompareArrows, Table2 } from "lucide-react";
 
 import { ScatterCompare, SquadBarChart } from "@/components/charts/charts";
 import { Panel, PanelHeader, StatCard } from "@/components/ui/primitives";
+import { useLocaleTag, useT } from "@/lib/i18n/client";
 import { formatNumber, percentileColor } from "@/lib/utils";
 
 export interface AnalyticsPlayer {
@@ -34,6 +35,8 @@ export function AnalyticsBoard({
   metrics: AnalyticsMetric[];
   teamName: string;
 }) {
+  const t = useT();
+  const tag = useLocaleTag();
   const [primary, setPrimary] = useState(metrics[0]?.key ?? "");
   const [secondary, setSecondary] = useState(metrics[1]?.key ?? metrics[0]?.key ?? "");
   const [positionFilter, setPositionFilter] = useState("ALL");
@@ -83,11 +86,11 @@ export function AnalyticsBoard({
   // combien de joueurs sont sous la norme.
   const distribution = useMemo(() => {
     const bands = [
-      { label: "Tres faible", min: 0, max: 15, count: 0 },
-      { label: "Faible", min: 15, max: 35, count: 0 },
-      { label: "Moyen", min: 35, max: 65, count: 0 },
-      { label: "Bon", min: 65, max: 85, count: 0 },
-      { label: "Tres bon", min: 85, max: 101, count: 0 },
+      { label: t("analytics.bandVeryLow"), min: 0, max: 15, count: 0 },
+      { label: t("analytics.bandLow"), min: 15, max: 35, count: 0 },
+      { label: t("analytics.bandAverage"), min: 35, max: 65, count: 0 },
+      { label: t("analytics.bandGood"), min: 65, max: 85, count: 0 },
+      { label: t("analytics.bandVeryGood"), min: 85, max: 101, count: 0 },
     ];
     for (const player of filtered) {
       const percentile = player.metrics[primary]?.percentile;
@@ -96,7 +99,8 @@ export function AnalyticsBoard({
       if (band) band.count += 1;
     }
     return bands;
-  }, [filtered, primary]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, primary, t]);
 
   const totalWithPercentile = distribution.reduce((a, b) => a + b.count, 0);
 
@@ -107,7 +111,7 @@ export function AnalyticsBoard({
         <div className="grid sm:grid-cols-3 gap-3">
           <div>
             <label className="label" htmlFor="metric-primary">
-              Metrique principale
+              {t("analytics.primaryMetric")}
             </label>
             <select
               id="metric-primary"
@@ -124,7 +128,7 @@ export function AnalyticsBoard({
           </div>
           <div>
             <label className="label" htmlFor="metric-secondary">
-              Metrique a croiser
+              {t("analytics.secondaryMetric")}
             </label>
             <select
               id="metric-secondary"
@@ -141,7 +145,7 @@ export function AnalyticsBoard({
           </div>
           <div>
             <label className="label" htmlFor="analytics-position">
-              Poste
+              {t("analytics.position")}
             </label>
             <select
               id="analytics-position"
@@ -149,7 +153,7 @@ export function AnalyticsBoard({
               onChange={(event) => setPositionFilter(event.target.value)}
               className="field cursor-pointer"
             >
-              <option value="ALL">Tous les postes</option>
+              <option value="ALL">{t("analytics.allPositions")}</option>
               {positions.map((position) => (
                 <option key={position} value={position}>
                   {position}
@@ -163,26 +167,26 @@ export function AnalyticsBoard({
       {/* Indicateurs */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
-          label="Moyenne du groupe"
-          value={formatNumber(average, primaryMetric?.decimals ?? 2)}
+          label={t("analytics.groupMean")}
+          value={formatNumber(average, primaryMetric?.decimals ?? 2, tag)}
           unit={primaryMetric?.unit}
-          hint={`${barData.length} joueurs mesures`}
+          hint={`${barData.length} ${t("analytics.playersMeasured")}`}
         />
         <StatCard
-          label="Ecart type"
-          value={formatNumber(spread, primaryMetric?.decimals ?? 2)}
+          label={t("analytics.sd")}
+          value={formatNumber(spread, primaryMetric?.decimals ?? 2, tag)}
           unit={primaryMetric?.unit}
-          hint={average !== 0 ? `${formatNumber((spread / average) * 100, 1)} % de variation` : undefined}
+          hint={average !== 0 ? `${formatNumber((spread / average) * 100, 1, tag)} % ${t("analytics.variation")}` : undefined}
         />
         <StatCard
-          label="Meilleure valeur"
-          value={formatNumber(best, primaryMetric?.decimals ?? 2)}
+          label={t("analytics.best")}
+          value={formatNumber(best, primaryMetric?.decimals ?? 2, tag)}
           unit={primaryMetric?.unit}
           tone="positive"
         />
         <StatCard
-          label="Valeur la plus basse"
-          value={formatNumber(worst, primaryMetric?.decimals ?? 2)}
+          label={t("analytics.worst")}
+          value={formatNumber(worst, primaryMetric?.decimals ?? 2, tag)}
           unit={primaryMetric?.unit}
           tone="warning"
         />
@@ -191,8 +195,8 @@ export function AnalyticsBoard({
       {/* Classement du groupe */}
       <Panel>
         <PanelHeader
-          title={`Classement du groupe : ${primaryMetric?.label ?? ""}`}
-          subtitle={`${teamName}${positionFilter !== "ALL" ? ` · poste ${positionFilter}` : ""}`}
+          title={`${t("analytics.ranking")} : ${primaryMetric?.label ?? ""}`}
+          subtitle={`${teamName}${positionFilter !== "ALL" ? ` · ${positionFilter}` : ""}`}
           icon={<BarChart3 size={16} />}
         />
         <SquadBarChart
@@ -208,8 +212,8 @@ export function AnalyticsBoard({
         {/* Repartition */}
         <Panel>
           <PanelHeader
-            title="Repartition par rapport a la norme"
-            subtitle={`${totalWithPercentile} joueurs situes dans la population de reference`}
+            title={t("analytics.distribution")}
+            subtitle={`${totalWithPercentile} ${t("analytics.distributionHint")}`}
             icon={<Table2 size={16} />}
           />
           <div className="space-y-2.5 mt-1">
@@ -221,7 +225,7 @@ export function AnalyticsBoard({
                   <div className="flex items-center justify-between text-[0.8125rem] mb-1">
                     <span style={{ color: "var(--text-secondary)" }}>{band.label}</span>
                     <span className="tabular" style={{ color: "var(--text-muted)" }}>
-                      {band.count} joueur{band.count > 1 ? "s" : ""} · {share.toFixed(0)} %
+                      {band.count} {band.count > 1 ? t("common.players") : t("common.player")} · {share.toFixed(0)} %
                     </span>
                   </div>
                   <div
@@ -238,16 +242,15 @@ export function AnalyticsBoard({
             })}
           </div>
           <p className="text-[0.75rem] mt-3 leading-relaxed" style={{ color: "var(--text-muted)" }}>
-            Une concentration dans les tranches basses signale un besoin collectif sur cette qualite.
-            Une repartition etalee appelle au contraire une individualisation.
+            {t("analytics.distributionNote")}
           </p>
         </Panel>
 
         {/* Croisement */}
         <Panel>
           <PanelHeader
-            title="Croisement de deux qualites"
-            subtitle={`${primaryMetric?.label ?? ""} face a ${secondaryMetric?.label ?? ""}`}
+            title={t("analytics.crossing")}
+            subtitle={`${primaryMetric?.label ?? ""} ${t("analytics.crossingVersus")} ${secondaryMetric?.label ?? ""}`}
             icon={<GitCompareArrows size={16} />}
           />
           <ScatterCompare
@@ -259,8 +262,7 @@ export function AnalyticsBoard({
             height={330}
           />
           <p className="text-[0.75rem] mt-2 leading-relaxed" style={{ color: "var(--text-muted)" }}>
-            Croiser deux qualites fait apparaitre les profils atypiques : un joueur rapide mais peu
-            enduran, un joueur fort mais lent. Ce sont ces cas qui demandent un travail specifique.
+            {t("analytics.crossingNote")}
           </p>
         </Panel>
       </div>
@@ -268,20 +270,20 @@ export function AnalyticsBoard({
       {/* Tableau detaille */}
       <Panel padded={false} className="p-4">
         <PanelHeader
-          title="Detail par joueur"
-          subtitle="Trie de la valeur la plus faible a la plus elevee"
+          title={t("analytics.perPlayer")}
+          subtitle={t("analytics.perPlayerSubtitle")}
           icon={<Table2 size={16} />}
         />
         <div className="scroll-x">
           <table className="data-table">
             <thead>
               <tr>
-                <th scope="col">Joueur</th>
-                <th scope="col">Poste</th>
+                <th scope="col">{t("squad.player")}</th>
+                <th scope="col">{t("squad.position")}</th>
                 <th scope="col">{primaryMetric?.label}</th>
-                <th scope="col">Percentile</th>
+                <th scope="col">{t("player.percentile")}</th>
                 <th scope="col">{secondaryMetric?.label}</th>
-                <th scope="col">Ecart a la moyenne du groupe</th>
+                <th scope="col">{t("analytics.gapToMean")}</th>
               </tr>
             </thead>
             <tbody>
@@ -308,7 +310,7 @@ export function AnalyticsBoard({
                       </td>
                       <td style={{ color: "var(--text-secondary)" }}>{player.position}</td>
                       <td className="tabular">
-                        {formatNumber(cell.value, primaryMetric?.decimals ?? 2)}
+                        {formatNumber(cell.value, primaryMetric?.decimals ?? 2, tag)}
                       </td>
                       <td className="tabular">
                         {cell.percentile == null ? (
@@ -321,12 +323,12 @@ export function AnalyticsBoard({
                       </td>
                       <td className="tabular">
                         {secondaryCell
-                          ? formatNumber(secondaryCell.value, secondaryMetric?.decimals ?? 2)
+                          ? formatNumber(secondaryCell.value, secondaryMetric?.decimals ?? 2, tag)
                           : "—"}
                       </td>
                       <td className="tabular" style={{ color: "var(--text-secondary)" }}>
                         {gap > 0 ? "+" : ""}
-                        {formatNumber(gap, 1)} %
+                        {formatNumber(gap, 1, tag)} %
                       </td>
                     </tr>
                   );

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { TrendChart } from "@/components/charts/charts";
+import { useLocaleTag, useT } from "@/lib/i18n/client";
 import { formatNumber } from "@/lib/utils";
 
 export interface TrendSeries {
@@ -15,14 +16,15 @@ export interface TrendSeries {
 }
 
 export function PlayerTrends({ series }: { series: TrendSeries[] }) {
+  const t = useT();
+  const tag = useLocaleTag();
   const [selected, setSelected] = useState(series[0]?.key ?? "");
   const current = useMemo(() => series.find((s) => s.key === selected), [series, selected]);
 
   if (series.length === 0) {
     return (
       <p className="text-sm py-8 text-center" style={{ color: "var(--text-muted)" }}>
-        Aucune metrique disposant d'au moins deux mesures. L'evolution apparaitra apres la deuxieme
-        passation.
+        {t("player.noTrend")}
       </p>
     );
   }
@@ -37,7 +39,7 @@ export function PlayerTrends({ series }: { series: TrendSeries[] }) {
     <div>
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <label className="sr-only" htmlFor="trend-metric">
-          Choisir la metrique a afficher
+          {t("player.selectMetric")}
         </label>
         <select
           id="trend-metric"
@@ -62,7 +64,7 @@ export function PlayerTrends({ series }: { series: TrendSeries[] }) {
             }}
           >
             {change > 0 ? "+" : ""}
-            {change.toFixed(1)} % depuis la premiere mesure
+            {change.toFixed(1)} % {t("player.sinceFirst")}
           </span>
         ) : null}
       </div>
@@ -74,21 +76,21 @@ export function PlayerTrends({ series }: { series: TrendSeries[] }) {
             unit={current.unit}
             label={current.label}
             referenceValue={current.normMean}
-            referenceLabel="Moyenne de reference"
+            referenceLabel={t("chart.reference")}
             higherIsBetter={current.higherIsBetter}
             height={240}
           />
           <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-[0.8125rem]" style={{ color: "var(--text-muted)" }}>
             <span className="tabular">
-              Premiere mesure : {formatNumber(first ?? 0, current.decimals)} {current.unit}
+              {t("player.firstMeasure")} : {formatNumber(first ?? 0, current.decimals, tag)} {current.unit}
             </span>
             <span className="tabular">
-              Derniere mesure : {formatNumber(last ?? 0, current.decimals)} {current.unit}
+              {t("player.lastMeasure")} : {formatNumber(last ?? 0, current.decimals, tag)} {current.unit}
             </span>
-            <span className="tabular">{current.points.length} mesures</span>
+            <span className="tabular">{current.points.length} {t("player.measurements")}</span>
             {current.normMean != null ? (
               <span className="tabular">
-                Reference population : {formatNumber(current.normMean, current.decimals)} {current.unit}
+                {t("player.populationReference")} : {formatNumber(current.normMean, current.decimals, tag)} {current.unit}
               </span>
             ) : null}
           </div>

@@ -5,6 +5,7 @@ import { ClipboardList, Plus } from "lucide-react";
 import { accessibleTeamIds, requireUser, type CurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getTest } from "@/lib/sports-science/catalog";
+import { getLocale, getLocaleTag, getT, pick } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/utils";
 import { Badge, EmptyState, PageHeader, Panel } from "@/components/ui/primitives";
 import { SkeletonTable } from "@/components/ui/skeleton";
@@ -12,7 +13,12 @@ import { SkeletonTable } from "@/components/ui/skeleton";
 export const dynamic = "force-dynamic";
 
 async function SessionsTable({ user }: { user: CurrentUser }) {
-  const ids = await accessibleTeamIds(user);
+  const [ids, t, locale, tag] = await Promise.all([
+    accessibleTeamIds(user),
+    getT(),
+    getLocale(),
+    getLocaleTag(),
+  ]);
 
   const sessions = await prisma.testSession.findMany({
     where: ids === "ALL" ? {} : { teamId: { in: ids } },
@@ -26,13 +32,13 @@ async function SessionsTable({ user }: { user: CurrentUser }) {
   if (sessions.length === 0) {
     return (
       <EmptyState
-        title="Aucune passation"
-        description="Creez une passation pour saisir les resultats de toute une equipe en une seule fois."
+        title={t("sessions.none")}
+        description={t("sessions.noneBody")}
         icon={<ClipboardList size={20} />}
         action={
           <Link href="/app/sessions/new" className="btn btn-primary">
             <Plus size={15} aria-hidden="true" />
-            Creer une passation
+            {t("dashboard.createSession")}
           </Link>
         }
       />
@@ -44,11 +50,11 @@ async function SessionsTable({ user }: { user: CurrentUser }) {
       <table className="data-table">
         <thead>
           <tr>
-            <th scope="col">Date</th>
-            <th scope="col" style={{ minWidth: "14rem" }}>Passation</th>
-            <th scope="col">Equipe</th>
-            <th scope="col" style={{ minWidth: "16rem" }}>Tests</th>
-            <th scope="col">Resultats</th>
+            <th scope="col">{t("common.date")}</th>
+            <th scope="col" style={{ minWidth: "14rem" }}>{t("sessions.session")}</th>
+            <th scope="col">{t("players.team")}</th>
+            <th scope="col" style={{ minWidth: "16rem" }}>{t("sessions.tests")}</th>
+            <th scope="col">{t("sessions.results")}</th>
           </tr>
         </thead>
         <tbody>
@@ -57,7 +63,7 @@ async function SessionsTable({ user }: { user: CurrentUser }) {
             return (
               <tr key={session.id}>
                 <td className="tabular" style={{ color: "var(--text-secondary)" }}>
-                  {formatDate(session.date)}
+                  {formatDate(session.date, tag)}
                 </td>
                 <td>
                   <Link
@@ -84,7 +90,7 @@ async function SessionsTable({ user }: { user: CurrentUser }) {
                 <td>
                   <div className="flex flex-wrap gap-1">
                     {keys.slice(0, 4).map((key) => (
-                      <Badge key={key}>{getTest(key)?.shortName.fr ?? key}</Badge>
+                      <Badge key={key}>{(() => { const d = getTest(key); return d ? pick(d.shortName, locale) : key; })()}</Badge>
                     ))}
                     {keys.length > 4 ? <Badge>+{keys.length - 4}</Badge> : null}
                   </div>
@@ -100,17 +106,17 @@ async function SessionsTable({ user }: { user: CurrentUser }) {
 }
 
 export default async function SessionsPage() {
-  const user = await requireUser();
+  const [user, t] = await Promise.all([requireUser(), getT()]);
 
   return (
     <>
       <PageHeader
-        title="Passations"
-        description="Chaque passation regroupe une date, une equipe et une ou plusieurs batteries de tests."
+        title={t("sessions.title")}
+        description={t("sessions.subtitle")}
         action={
           <Link href="/app/sessions/new" className="btn btn-primary">
             <Plus size={15} aria-hidden="true" />
-            Nouvelle passation
+            {t("dashboard.newSession")}
           </Link>
         }
       />

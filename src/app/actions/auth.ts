@@ -15,6 +15,7 @@ import {
   verifyPassword,
 } from "@/lib/auth";
 import { LOCALE_COOKIE, type Role } from "@/lib/constants";
+import { getT } from "@/lib/i18n/server";
 import { cookies } from "next/headers";
 
 export interface ActionState {
@@ -53,19 +54,19 @@ export async function loginAction(
     include: { organization: { select: { isActive: true, name: true } } },
   });
 
+  const t = await getT();
+
   // Message identique dans tous les cas d'echec, pour ne pas reveler
   // quels comptes existent.
-  const genericError = "Adresse email ou mot de passe incorrect.";
+  const genericError = t("login.errorGeneric");
   if (!user) return { error: genericError };
 
   const valid = await verifyPassword(parsed.data.password, user.passwordHash);
   if (!valid) return { error: genericError };
 
-  if (!user.isActive) {
-    return { error: "Ce compte est desactive. Contacter l'administrateur." };
-  }
+  if (!user.isActive) return { error: t("login.errorDisabled") };
   if (user.organization && !user.organization.isActive) {
-    return { error: "L'acces de votre club est suspendu. Contacter l'administrateur." };
+    return { error: t("login.errorSuspended") };
   }
 
   const token = await signSession({
@@ -80,6 +81,26 @@ export async function loginAction(
     where: { id: user.id },
     data: { lastLoginAt: new Date() },
   });
+
+  // Langue de la session.
+  //
+  // Si le visiteur vient de choisir une langue sur l'ecran de connexion, ce choix
+  // explicite l'emporte et devient sa preference enregistree. Sinon, on applique
+  // la langue de son profil : il retrouve ainsi son interface sur un appareil
+  // qu'il n'a jamais utilise.
+  const store = await cookies();
+  const chosen = store.get(LOCALE_COOKIE)?.value;
+
+  if (chosen === "fr" || chosen === "en") {
+    if (chosen !== user.locale) {
+      await prisma.user.update({ where: { id: user.id }, data: { locale: chosen } });
+    }
+  } else {
+    store.set(LOCALE_COOKIE, user.locale === "en" ? "en" : "fr", {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+    });
+  }
 
   await logAudit({
     userId: user.id,

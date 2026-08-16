@@ -106,25 +106,23 @@ function RouteProgressBar() {
       start();
     };
 
-    // Les formulaires qui declenchent une action serveur suivie d'une
-    // redirection passent par ici, pas par un clic sur un lien.
-    const onSubmit = (event: SubmitEvent) => {
-      const form = event.target as HTMLFormElement | null;
-      if (!form || form.dataset.noProgress === "true") return;
-      start();
-    };
+    // Volontairement, aucun ecouteur sur les formulaires.
+    //
+    // Une action serveur ne change pas toujours d'adresse : une connexion
+    // refusee, un enregistrement qui reaffiche la meme page. La barre, qui ne
+    // se termine qu'au changement d'adresse, resterait alors bloquee jusqu'a
+    // son delai de securite. Les boutons de formulaire portent deja leur propre
+    // indicateur, la ou se trouve le regard de l'utilisateur.
 
     const onStart = () => start();
     const onDone = () => done();
 
     document.addEventListener("click", onClick, { capture: true });
-    document.addEventListener("submit", onSubmit, { capture: true });
     window.addEventListener(START_EVENT, onStart);
     window.addEventListener(DONE_EVENT, onDone);
 
     return () => {
       document.removeEventListener("click", onClick, { capture: true });
-      document.removeEventListener("submit", onSubmit, { capture: true });
       window.removeEventListener(START_EVENT, onStart);
       window.removeEventListener(DONE_EVENT, onDone);
       clearTimers();
@@ -138,7 +136,7 @@ function RouteProgressBar() {
       className="route-progress"
       style={{ width: `${progress}%`, opacity: progress >= 100 ? 0 : 1 }}
       role="progressbar"
-      aria-label="Chargement de la page"
+      aria-label="Loading"
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(progress)}

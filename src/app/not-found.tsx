@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { SearchX } from "lucide-react";
 
-export default function NotFound() {
+import { getT } from "@/lib/i18n/server";
+
+export default async function NotFound() {
+  const t = await getT();
   return (
     <main className="min-h-dvh grid place-items-center px-6">
       <div className="text-center max-w-md">
@@ -12,12 +15,12 @@ export default function NotFound() {
         >
           <SearchX size={22} />
         </span>
-        <h1 className="text-xl font-semibold tracking-tight">Page introuvable</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{t("error.notFound")}</h1>
         <p className="text-sm mt-2" style={{ color: "var(--text-secondary)" }}>
-          La page demandee n'existe pas ou vous n'avez pas les droits pour y acceder.
+          {t("error.notFoundBody")}
         </p>
         <Link href="/app" className="btn btn-primary mt-5">
-          Retour au tableau de bord
+          {t("error.backToDashboard")}
         </Link>
       </div>
     </main>

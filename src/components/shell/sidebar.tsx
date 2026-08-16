@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { ThemeToggle } from "./theme-toggle";
+import { useT } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 
 const ICONS = {
@@ -62,6 +63,7 @@ export function Sidebar({
   organizationName: string | null;
   footer: React.ReactNode;
 }) {
+  const t = useT();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -174,7 +176,7 @@ export function Sidebar({
           onClick={() => setOpen(true)}
           className="grid place-items-center size-10 rounded-lg cursor-pointer"
           style={{ color: "var(--text-secondary)" }}
-          aria-label="Ouvrir la navigation"
+          aria-label={t("nav.open")}
           aria-expanded={open}
         >
           <Menu size={20} aria-hidden="true" />
@@ -196,14 +198,14 @@ export function Sidebar({
             className="absolute inset-0 cursor-pointer"
             style={{ background: "rgb(2 6 23 / 0.55)" }}
             onClick={() => setOpen(false)}
-            aria-label="Fermer la navigation"
+            aria-label={t("nav.close")}
           />
           <div
             className="relative flex flex-col w-[17rem] max-w-[85vw] h-full"
             style={{ background: "var(--surface-panel)" }}
             role="dialog"
             aria-modal="true"
-            aria-label="Navigation principale"
+            aria-label={t("nav.main")}
           >
             <div className="flex items-center justify-between pr-2" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
               <div className="flex-1">{brand}</div>
@@ -212,7 +214,7 @@ export function Sidebar({
                 onClick={() => setOpen(false)}
                 className="grid place-items-center size-10 rounded-lg cursor-pointer"
                 style={{ color: "var(--text-secondary)" }}
-                aria-label="Fermer la navigation"
+                aria-label={t("nav.close")}
               >
                 <X size={19} aria-hidden="true" />
               </button>

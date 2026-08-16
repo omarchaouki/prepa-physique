@@ -5,24 +5,27 @@ import { useFormStatus } from "react-dom";
 import { Loader2 } from "lucide-react";
 
 import { changePasswordAction, type ActionState } from "@/app/actions/auth";
+import { useT } from "@/lib/i18n/client";
 
 function SubmitButton() {
+  const t = useT();
   const { pending } = useFormStatus();
   return (
     <button type="submit" className="btn btn-primary" disabled={pending}>
       {pending ? (
         <>
           <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-          Mise a jour
+          {t("settings.updating")}
         </>
       ) : (
-        "Changer le mot de passe"
+        t("settings.changePassword")
       )}
     </button>
   );
 }
 
 export function ChangePasswordForm() {
+  const t = useT();
   const [state, formAction] = useActionState<ActionState, FormData>(changePasswordAction, {});
 
   return (
@@ -48,7 +51,7 @@ export function ChangePasswordForm() {
 
       <div>
         <label className="label" htmlFor="current">
-          Mot de passe actuel
+          {t("settings.currentPassword")}
         </label>
         <input
           id="current"
@@ -62,7 +65,7 @@ export function ChangePasswordForm() {
 
       <div>
         <label className="label" htmlFor="next">
-          Nouveau mot de passe
+          {t("settings.newPassword")}
         </label>
         <input
           id="next"
@@ -74,13 +77,13 @@ export function ChangePasswordForm() {
           className="field"
         />
         <p className="text-[0.75rem] mt-1" style={{ color: "var(--text-muted)" }}>
-          Au moins 8 caracteres.
+          {t("settings.passwordHint")}
         </p>
       </div>
 
       <div>
         <label className="label" htmlFor="confirm">
-          Confirmer le nouveau mot de passe
+          {t("settings.confirmPassword")}
         </label>
         <input
           id="confirm"

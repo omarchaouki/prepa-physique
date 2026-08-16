@@ -7,6 +7,7 @@ import { canAccessTeam, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getTest } from "@/lib/sports-science/catalog";
 import { toTestSpec } from "@/lib/sports-science/types";
+import { getLocaleTag, getT } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/utils";
 import {
   Alert,
@@ -21,12 +22,12 @@ import { SessionTabs, type SessionTab } from "@/components/session-tabs";
 
 export const dynamic = "force-dynamic";
 
-const SURFACE_LABELS: Record<string, string> = {
-  NATURAL_GRASS: "Pelouse naturelle",
-  ARTIFICIAL: "Synthetique",
-  INDOOR: "Salle",
-  TRACK: "Piste",
-};
+const SURFACE_KEYS = {
+  NATURAL_GRASS: "sessions.surfaceGrass",
+  ARTIFICIAL: "sessions.surfaceArtificial",
+  INDOOR: "sessions.surfaceIndoor",
+  TRACK: "sessions.surfaceTrack",
+} as const;
 
 /**
  * La grille de saisie doit charger l'effectif complet et les resultats deja
@@ -44,7 +45,8 @@ async function EntrySection({
   testKeys: string[];
   canEdit: boolean;
 }) {
-  const [players, results] = await Promise.all([
+  const [t, players, results] = await Promise.all([
+    getT(),
     prisma.player.findMany({
       where: { teamId, status: { not: "LEFT" } },
       orderBy: [{ lastName: "asc" }],
@@ -96,16 +98,24 @@ async function EntrySection({
   return (
     <>
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <StatCard label="Joueurs" value={players.length} hint="dans l'effectif" />
-        <StatCard label="Tests" value={tabs.length} hint="dans cette passation" />
         <StatCard
-          label="Resultats saisis"
+          label={t("sessions.statPlayers")}
+          value={players.length}
+          hint={t("sessions.statPlayersHint")}
+        />
+        <StatCard
+          label={t("sessions.statTests")}
+          value={tabs.length}
+          hint={t("sessions.statTestsHint")}
+        />
+        <StatCard
+label={t("sessions.statEntered")}
           value={totalFilled}
-          hint={`sur ${totalExpected} attendus`}
+hint={`${t("common.of")} ${totalExpected} ${t("sessions.statEnteredHint")}`}
           tone={completion === 100 ? "positive" : completion > 0 ? "warning" : "neutral"}
         />
         <StatCard
-          label="Avancement"
+label={t("sessions.statProgress")}
           value={completion}
           unit="%"
           tone={completion === 100 ? "positive" : "neutral"}
@@ -114,13 +124,13 @@ async function EntrySection({
 
       <Panel>
         <PanelHeader
-          title="Saisie des resultats"
-          subtitle="Un onglet par test. Les valeurs derivees sont calculees a l'enregistrement."
+title={t("sessions.entry")}
+          subtitle={t("sessions.entrySubtitle")}
           icon={<ClipboardList size={16} />}
         />
         {players.length === 0 ? (
           <p className="text-sm py-8 text-center" style={{ color: "var(--text-muted)" }}>
-            Aucun joueur dans cette equipe. Ajoutez l'effectif avant de saisir des resultats.
+            {t("sessions.noPlayersBody")}
           </p>
         ) : (
           <SessionTabs
@@ -142,8 +152,10 @@ export default async function SessionPage({
 }) {
   const { sessionId } = await params;
 
-  const [user, session] = await Promise.all([
+  const [user, t, tag, session] = await Promise.all([
     requireUser(),
+    getT(),
+    getLocaleTag(),
     prisma.testSession.findUnique({
       where: { id: sessionId },
       select: {
@@ -177,16 +189,16 @@ export default async function SessionPage({
             style={{ color: "var(--text-muted)" }}
           >
             <ChevronLeft size={14} aria-hidden="true" />
-            Passations
+            {t("sessions.title")}
           </Link>
         }
         title={session.name}
-        description={`${formatDate(session.date)} · ${session.team.name}${session.surface ? ` · ${SURFACE_LABELS[session.surface] ?? session.surface}` : ""}${session.temperatureC != null ? ` · ${session.temperatureC} degres` : ""}`}
+        description={`${formatDate(session.date, tag)} · ${session.team.name}${session.surface && session.surface in SURFACE_KEYS ? ` · ${t(SURFACE_KEYS[session.surface as keyof typeof SURFACE_KEYS])}` : ""}${session.temperatureC != null ? ` · ${session.temperatureC} °C` : ""}`}
         action={
           <>
             <Badge tone="brand">{session.team.category}</Badge>
             <Link href={`/app/teams/${session.team.id}`} className="btn btn-secondary">
-              Voir l'effectif
+              {t("teams.viewSquad")}
             </Link>
           </>
         }
@@ -194,7 +206,7 @@ export default async function SessionPage({
 
       {session.notes ? (
         <div className="mb-4">
-          <Alert tone="info" title="Notes de la passation">
+          <Alert tone="info" title={t("sessions.notesTitle")}>
             {session.notes}
           </Alert>
         </div>
@@ -202,10 +214,10 @@ export default async function SessionPage({
 
       {session.isLocked ? (
         <div className="mb-4">
-          <Alert tone="warning" title="Passation verrouillee">
+          <Alert tone="warning" title={t("sessions.locked")}>
             <span className="inline-flex items-center gap-1.5">
               <Lock size={14} aria-hidden="true" />
-              Les resultats ne peuvent plus etre modifies.
+              {t("sessions.lockedBody")}
             </span>
           </Alert>
         </div>
@@ -219,8 +231,8 @@ export default async function SessionPage({
             </div>
             <Panel>
               <PanelHeader
-                title="Saisie des resultats"
-                subtitle="Un onglet par test. Les valeurs derivees sont calculees a l'enregistrement."
+title={t("sessions.entry")}
+                subtitle={t("sessions.entrySubtitle")}
                 icon={<ClipboardList size={16} />}
               />
               <div className="flex gap-1 mb-4">

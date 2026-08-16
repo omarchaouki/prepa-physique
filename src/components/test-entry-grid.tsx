@@ -6,6 +6,7 @@ import { AlertTriangle, Check, Info, Loader2, Save } from "lucide-react";
 import { saveResultsAction, type SaveResultsResponse } from "@/app/actions/tests";
 import type { TestSpec } from "@/lib/sports-science/types";
 import { Alert, Badge } from "@/components/ui/primitives";
+import { usePick, useT } from "@/lib/i18n/client";
 
 export interface EntryPlayer {
   id: string;
@@ -30,6 +31,8 @@ export function TestEntryGrid({
   initialValues: Record<string, Record<string, string>>;
   canEdit: boolean;
 }) {
+  const t = useT();
+  const pick = usePick();
   const [values, setValues] = useState<Record<string, Record<string, string>>>(initialValues);
   const [response, setResponse] = useState<SaveResultsResponse | null>(null);
   const [pending, startTransition] = useTransition();
@@ -95,13 +98,15 @@ export function TestEntryGrid({
   const groups = useMemo(() => {
     const map = new Map<string, typeof test.fields>();
     for (const field of test.fields) {
-      const key = field.group?.fr ?? "";
+      const key = field.group ? pick(field.group) : "";
       const list = map.get(key) ?? [];
       list.push(field);
       map.set(key, list);
     }
     return [...map.entries()];
-  }, [test.fields]);
+    // pick depend de la langue : le regroupement doit se recalculer si elle change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [test.fields, pick]);
 
   return (
     <div>
@@ -109,30 +114,32 @@ export function TestEntryGrid({
       <details className="panel-sunken p-3 mb-3">
         <summary className="cursor-pointer text-sm font-medium flex items-center gap-2">
           <Info size={15} aria-hidden="true" />
-          Protocole et materiel
+          {t("entry.protocol")}
         </summary>
         <div className="mt-2.5 space-y-2 text-[0.8125rem] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-          <p>{test.description.fr}</p>
+          <p>{pick(test.description)}</p>
           <p>
             <span className="font-medium" style={{ color: "var(--text-primary)" }}>
-              Protocole :
+              {t("entry.protocolLabel")} :
             </span>{" "}
-            {test.protocol.fr}
+            {pick(test.protocol)}
           </p>
           <div className="flex flex-wrap gap-x-5 gap-y-1 text-[0.75rem]" style={{ color: "var(--text-muted)" }}>
-            <span>Materiel : {test.equipment.fr}</span>
-            <span>Duree : environ {test.durationMin} minutes</span>
-            <span>Reference : {test.reference}</span>
+            <span>{t("entry.equipment")} : {pick(test.equipment)}</span>
+            <span>{t("entry.duration")} : {t("entry.durationAbout")} {test.durationMin} min</span>
+            <span>{t("entry.reference")} : {test.reference}</span>
           </div>
         </div>
       </details>
 
       {missingContext.length > 0 ? (
         <div className="mb-3">
-          <Alert tone="warning" title="Donnees morphologiques manquantes">
-            {missingContext.length} joueur{missingContext.length > 1 ? "s n'ont" : " n'a"} pas de taille
-            ou de masse enregistree. Les calculs qui en dependent utiliseront une valeur par defaut,
-            ce qui fausse le resultat. Realiser d'abord le test d'anthropometrie.
+          <Alert tone="warning" title={t("entry.missingContext")}>
+            {missingContext.length}{" "}
+            {missingContext.length > 1 ? t("common.players") : t("common.player")}{" "}
+            {missingContext.length > 1
+              ? t("entry.missingContextBody")
+              : t("entry.missingContextOne")}
           </Alert>
         </div>
       ) : null}
@@ -141,7 +148,7 @@ export function TestEntryGrid({
       <div className="scroll-x panel" style={{ maxHeight: "65vh", overflowY: "auto" }}>
         <table className="data-table" ref={gridRef}>
           <caption className="sr-only">
-            Grille de saisie du test {test.name.fr}, un joueur par ligne
+            {t("entry.caption")} {pick(test.name)}, {t("entry.onePlayerPerRow")}
           </caption>
           <thead>
             {groups.length > 1 ? (
@@ -154,19 +161,19 @@ export function TestEntryGrid({
                     colSpan={fields.length}
                     style={{ textAlign: "center", borderLeft: "1px solid var(--border-subtle)" }}
                   >
-                    {groupName || "Mesures"}
+                    {groupName || t("entry.measures")}
                   </th>
                 ))}
               </tr>
             ) : null}
             <tr>
               <th scope="col" style={{ minWidth: "12rem", position: "sticky", left: 0, zIndex: 3 }}>
-                Joueur
+                {t("squad.player")}
               </th>
               {test.fields.map((field) => (
                 <th key={field.key} scope="col" style={{ minWidth: "7rem" }}>
-                  <span className="block truncate" title={field.label.fr}>
-                    {field.label.fr}
+                  <span className="block truncate" title={pick(field.label)}>
+                    {pick(field.label)}
                     {field.optional ? "" : " *"}
                   </span>
                   {field.unit ? (
@@ -197,7 +204,7 @@ export function TestEntryGrid({
                       <span
                         className="size-1.5 rounded-full shrink-0"
                         style={{ background: hasValue ? "var(--success)" : "var(--border-strong)" }}
-                        aria-label={hasValue ? "Ligne renseignee" : "Ligne vide"}
+                        aria-label={hasValue ? t("entry.rowFilled") : t("entry.rowEmpty")}
                       />
                       <span className="min-w-0">
                         <span className="block truncate font-medium">
@@ -205,7 +212,7 @@ export function TestEntryGrid({
                         </span>
                         <span className="block text-[0.6875rem]" style={{ color: "var(--text-muted)" }}>
                           {player.position}
-                          {player.status !== "ACTIVE" ? " · indisponible" : ""}
+                          {player.status !== "ACTIVE" ? ` · ${t("entry.unavailable")}` : ""}
                         </span>
                       </span>
                     </div>
@@ -220,12 +227,12 @@ export function TestEntryGrid({
                           disabled={!canEdit}
                           className="field"
                           style={{ minHeight: "2.25rem", padding: "0.25rem 0.5rem" }}
-                          aria-label={`${field.label.fr} pour ${player.lastName}`}
+                          aria-label={`${pick(field.label)} — ${player.lastName}`}
                         >
                           <option value="">—</option>
                           {field.options?.map((option) => (
                             <option key={option.value} value={option.value}>
-                              {option.label.fr}
+                              {pick(option.label)}
                             </option>
                           ))}
                         </select>
@@ -244,7 +251,7 @@ export function TestEntryGrid({
                           data-cell={`${rowIndex}-${colIndex}`}
                           className="field tabular"
                           style={{ minHeight: "2.25rem", padding: "0.25rem 0.5rem" }}
-                          aria-label={`${field.label.fr} pour ${player.lastName} ${player.firstName}`}
+                          aria-label={`${pick(field.label)} — ${player.lastName} ${player.firstName}`}
                           placeholder={field.optional ? "" : "—"}
                         />
                       )}
@@ -263,22 +270,22 @@ export function TestEntryGrid({
           {pending ? (
             <>
               <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-              Enregistrement
+              {t("common.saving")}
             </>
           ) : (
             <>
               <Save size={16} aria-hidden="true" />
-              Enregistrer {test.shortName.fr}
+              {t("entry.save")} {pick(test.shortName)}
             </>
           )}
         </button>
 
         <span className="text-[0.8125rem] tabular" style={{ color: "var(--text-muted)" }}>
-          {filledCount} / {players.length} joueurs renseignes
+          {filledCount} / {players.length} {t("entry.playersFilled")}
         </span>
 
         <span className="text-[0.75rem] ml-auto" style={{ color: "var(--text-muted)" }}>
-          Entree ou fleche bas pour passer au joueur suivant
+          {t("entry.keyboardHint")}
         </span>
       </div>
 
@@ -300,7 +307,7 @@ export function TestEntryGrid({
             <div className="panel-sunken p-3">
               <p className="text-sm font-medium mb-2 flex items-center gap-1.5">
                 <AlertTriangle size={15} style={{ color: "var(--warning)" }} aria-hidden="true" />
-                Points d'attention detectes automatiquement
+                {t("entry.flagsTitle")}
               </p>
               <ul className="space-y-2">
                 {response.flags.map((flag) => (

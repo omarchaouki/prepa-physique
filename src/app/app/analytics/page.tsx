@@ -5,6 +5,7 @@ import { BarChart3 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getSquadOverview, listTeams, metricLabel } from "@/lib/queries";
 import { compareToNorm } from "@/lib/sports-science/norms";
+import { getLocale, getT } from "@/lib/i18n/server";
 import { EmptyState, PageHeader, Panel } from "@/components/ui/primitives";
 import { Skeleton, SkeletonChart, SkeletonStats, SkeletonTable } from "@/components/ui/skeleton";
 import {
@@ -44,14 +45,14 @@ const METRIC_CONFIG: Array<{ key: string; decimals: number; unit: string; higher
 ];
 
 async function AnalyticsSection({ teamId }: { teamId: string }) {
-  const overview = await getSquadOverview(teamId);
+  const [overview, t, locale] = await Promise.all([getSquadOverview(teamId), getT(), getLocale()]);
 
   if (!overview || overview.rows.length === 0) {
     return (
       <Panel>
         <EmptyState
-          title="Aucune donnee a analyser"
-          description="Realisez une passation de tests pour alimenter les analyses."
+          title={t("analytics.noData")}
+          description={t("analytics.noDataBody")}
           icon={<BarChart3 size={20} />}
         />
       </Panel>
@@ -67,7 +68,7 @@ async function AnalyticsSection({ teamId }: { teamId: string }) {
       : null;
     return {
       key: config.key,
-      label: metricLabel(config.key),
+      label: metricLabel(config.key, locale),
       unit: config.unit,
       decimals: config.decimals,
       higherIsBetter: config.higherIsBetter,
@@ -140,14 +141,18 @@ export default async function AnalyticsPage({
   searchParams: Promise<{ team?: string }>;
 }) {
   const user = await requireUser();
-  const [{ team: teamParam }, teams] = await Promise.all([searchParams, listTeams(user)]);
+  const [{ team: teamParam }, teams, t] = await Promise.all([
+    searchParams,
+    listTeams(user),
+    getT(),
+  ]);
 
   if (teams.length === 0) {
     return (
       <>
-        <PageHeader title="Analyses" />
+        <PageHeader title={t("analytics.title")} />
         <Panel>
-          <EmptyState title="Aucune equipe accessible" icon={<BarChart3 size={20} />} />
+          <EmptyState title={t("analytics.noTeam")} icon={<BarChart3 size={20} />} />
         </Panel>
       </>
     );
@@ -158,8 +163,8 @@ export default async function AnalyticsPage({
   return (
     <>
       <PageHeader
-        title="Analyses"
-        description="Comparez le groupe sur une qualite, croisez deux qualites et reperez les profils atypiques."
+        title={t("analytics.title")}
+        description={t("analytics.subtitle")}
       />
 
       {teams.length > 1 ? (

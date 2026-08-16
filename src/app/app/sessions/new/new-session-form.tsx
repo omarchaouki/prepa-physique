@@ -8,6 +8,7 @@ import { createSessionAction } from "@/app/actions/tests";
 import type { ActionState } from "@/app/actions/auth";
 import type { I18nText, TestCategory } from "@/lib/sports-science/types";
 import { Badge, Panel, PanelHeader } from "@/components/ui/primitives";
+import { useLocale, useT } from "@/lib/i18n/client";
 
 export interface TeamOption {
   id: string;
@@ -35,18 +36,19 @@ export interface BatteryOption {
 }
 
 function SubmitButton({ count }: { count: number }) {
+  const t = useT();
   const { pending } = useFormStatus();
   return (
     <button type="submit" className="btn btn-primary" disabled={pending || count === 0}>
       {pending ? (
         <>
           <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-          Creation
+          {t("sessions.creating")}
         </>
       ) : (
         <>
-          Creer la passation
-          {count > 0 ? ` (${count} test${count > 1 ? "s" : ""})` : ""}
+          {t("sessions.createSession")}
+          {count > 0 ? ` (${count})` : ""}
         </>
       )}
     </button>
@@ -68,6 +70,8 @@ export function NewSessionForm({
   defaultTeamId?: string;
   today: string;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const [state, formAction] = useActionState<ActionState, FormData>(createSessionAction, {});
   const [selected, setSelected] = useState<string[]>([]);
   const [teamId, setTeamId] = useState(defaultTeamId ?? teams[0]?.id ?? "");
@@ -110,11 +114,11 @@ export function NewSessionForm({
 
       {/* Informations generales */}
       <Panel>
-        <PanelHeader title="Informations" subtitle="Quand, avec quelle equipe et dans quelles conditions" />
+        <PanelHeader title={t("sessions.info")} subtitle={t("sessions.infoSubtitle")} />
         <div className="grid sm:grid-cols-2 gap-3">
           <div>
             <label className="label" htmlFor="teamId">
-              Equipe *
+              {t("sessions.team")} *
             </label>
             <select
               id="teamId"
@@ -134,14 +138,14 @@ export function NewSessionForm({
 
           <div>
             <label className="label" htmlFor="date">
-              Date *
+              {t("common.date")} *
             </label>
             <input id="date" name="date" type="date" required defaultValue={today} className="field" />
           </div>
 
           <div className="sm:col-span-2">
             <label className="label" htmlFor="name">
-              Nom de la passation *
+              {t("sessions.sessionName")} *
             </label>
             <input
               id="name"
@@ -150,26 +154,26 @@ export function NewSessionForm({
               required
               minLength={2}
               className="field"
-              placeholder="Bilan de reprise, controle mi saison, retour au jeu..."
+              placeholder={t("sessions.namePlaceholder")}
             />
           </div>
 
           <div>
             <label className="label" htmlFor="surface">
-              Surface
+              {t("sessions.surface")}
             </label>
             <select id="surface" name="surface" className="field cursor-pointer" defaultValue="">
-              <option value="">Non precisee</option>
-              <option value="NATURAL_GRASS">Pelouse naturelle</option>
-              <option value="ARTIFICIAL">Synthetique</option>
-              <option value="INDOOR">Salle</option>
-              <option value="TRACK">Piste</option>
+              <option value="">{t("sessions.surfaceNone")}</option>
+              <option value="NATURAL_GRASS">{t("sessions.surfaceGrass")}</option>
+              <option value="ARTIFICIAL">{t("sessions.surfaceArtificial")}</option>
+              <option value="INDOOR">{t("sessions.surfaceIndoor")}</option>
+              <option value="TRACK">{t("sessions.surfaceTrack")}</option>
             </select>
           </div>
 
           <div>
             <label className="label" htmlFor="temperatureC">
-              Temperature
+              {t("sessions.temperature")}
             </label>
             <input
               id="temperatureC"
@@ -179,18 +183,18 @@ export function NewSessionForm({
               min={-10}
               max={50}
               className="field"
-              placeholder="degres Celsius"
+              placeholder={t("sessions.temperatureUnit")}
             />
             <p className="text-[0.75rem] mt-1" style={{ color: "var(--text-muted)" }}>
-              Utilisee pour corriger la densite de l'air dans le profil de sprint.
+              {t("sessions.temperatureHelp")}
             </p>
           </div>
 
           <div className="sm:col-span-2">
             <label className="label" htmlFor="notes">
-              Notes
+              {t("common.notes")}
             </label>
-            <textarea id="notes" name="notes" rows={2} className="field" placeholder="Conditions, absences, remarques" />
+            <textarea id="notes" name="notes" rows={2} className="field" placeholder={t("sessions.notesPlaceholder")} />
           </div>
         </div>
       </Panel>
@@ -198,8 +202,8 @@ export function NewSessionForm({
       {/* Batteries pretes a l'emploi */}
       <Panel>
         <PanelHeader
-          title="Batteries pretes a l'emploi"
-          subtitle="Selection rapide, modifiable ensuite test par test"
+title={t("sessions.batteries")}
+          subtitle={t("sessions.batteriesSubtitle")}
         />
         <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
           {batteries.map((battery) => {
@@ -227,9 +231,9 @@ export function NewSessionForm({
                 <div className="flex flex-wrap items-center gap-2 mt-2 text-[0.6875rem]" style={{ color: "var(--text-muted)" }}>
                   <span className="inline-flex items-center gap-1">
                     <Clock size={11} aria-hidden="true" />
-                    environ {battery.estimatedMinutesPerPlayer} min par joueur
+                    {t("entry.durationAbout")} {battery.estimatedMinutesPerPlayer} min {t("sessions.perPlayer")}
                   </span>
-                  <span>· {battery.testKeys.length} tests</span>
+                  <span>· {battery.testKeys.length} {t("sessions.tests").toLowerCase()}</span>
                 </div>
               </button>
             );
@@ -240,12 +244,12 @@ export function NewSessionForm({
       {/* Selection des tests */}
       <Panel>
         <PanelHeader
-          title="Tests a realiser"
-          subtitle="Cocher les tests, la grille de saisie sera generee automatiquement"
+title={t("sessions.testsToRun")}
+          subtitle={t("sessions.testsToRunSubtitle")}
           action={
             selected.length > 0 ? (
               <button type="button" className="btn btn-ghost" onClick={() => setSelected([])}>
-                Tout deselectionner
+                {t("sessions.clearSelection")}
               </button>
             ) : null
           }
@@ -258,7 +262,7 @@ export function NewSessionForm({
                 className="text-[0.6875rem] font-semibold uppercase tracking-wider mb-2"
                 style={{ color: "var(--text-muted)" }}
               >
-                {categoryLabels[category]?.fr ?? category}
+                {categoryLabels[category]?.[locale] ?? category}
               </p>
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
                 {list.map((test) => {
@@ -286,7 +290,7 @@ export function NewSessionForm({
                           className="block text-[0.75rem] mt-0.5"
                           style={{ color: checked ? "var(--accent-soft-text)" : "var(--text-muted)" }}
                         >
-                          environ {test.durationMin} min
+                          {t("entry.durationAbout")} {test.durationMin} min
                         </span>
                       </span>
                     </label>
@@ -310,19 +314,19 @@ export function NewSessionForm({
         <SubmitButton count={selected.length} />
         {selected.length > 0 ? (
           <>
-            <Badge tone="brand">{selected.length} tests</Badge>
+            <Badge tone="brand">{selected.length} {t("sessions.tests").toLowerCase()}</Badge>
             <span className="text-[0.8125rem] tabular" style={{ color: "var(--text-muted)" }}>
-              environ {totalMinutes} minutes de protocole
+              {t("entry.durationAbout")} {totalMinutes} {t("sessions.protocolMinutes")}
             </span>
           </>
         ) : (
           <span className="text-[0.8125rem]" style={{ color: "var(--text-muted)" }}>
-            Selectionner au moins un test
+            {t("sessions.selectAtLeastOne")}
           </span>
         )}
         {selectedTeam ? (
           <span className="text-[0.8125rem] ml-auto" style={{ color: "var(--text-muted)" }}>
-            {selectedTeam.name} · categorie {selectedTeam.category}
+            {selectedTeam.name} · {t("sessions.category")} {selectedTeam.category}
           </span>
         ) : null}
       </div>

@@ -3,11 +3,14 @@
 import { useEffect, useState } from "react";
 import { Monitor, Moon, Sun } from "lucide-react";
 
+import { useT } from "@/lib/i18n/client";
+
 type Theme = "light" | "dark" | "system";
 
 const STORAGE_KEY = "pp-theme";
 
 export function ThemeToggle({ compact = false }: { compact?: boolean }) {
+  const t = useT();
   const [theme, setTheme] = useState<Theme>("system");
 
   useEffect(() => {
@@ -27,9 +30,9 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   };
 
   const options: Array<{ value: Theme; icon: typeof Sun; label: string }> = [
-    { value: "light", icon: Sun, label: "Theme clair" },
-    { value: "dark", icon: Moon, label: "Theme sombre" },
-    { value: "system", icon: Monitor, label: "Theme du systeme" },
+    { value: "light", icon: Sun, label: t("settings.themeLight") },
+    { value: "dark", icon: Moon, label: t("settings.themeDark") },
+    { value: "system", icon: Monitor, label: t("settings.themeSystem") },
   ];
 
   return (
@@ -37,7 +40,7 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
       className="inline-flex rounded-lg p-0.5 gap-0.5"
       style={{ background: "var(--surface-sunken)" }}
       role="group"
-      aria-label="Choix du theme"
+      aria-label={t("settings.theme")}
     >
       {options.map((option) => {
         const Icon = option.icon;

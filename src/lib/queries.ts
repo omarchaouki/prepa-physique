@@ -14,6 +14,7 @@ import {
 } from "./sports-science/norms";
 import { buildRecommendations, summariseRecommendations } from "./sports-science/recommendations";
 import { mean, percentChange, sd } from "./sports-science/stats";
+import type { Locale } from "./i18n/dictionary";
 
 /**
  * Fenetre d'historique chargee pour les vues de synthese.
@@ -165,7 +166,7 @@ export interface MetricComparison extends LatestMetric {
   thresholdLabel: string | null;
 }
 
-export const getPlayerProfile = cache(async (playerId: string) => {
+export const getPlayerProfile = cache(async (playerId: string, locale: Locale = "fr") => {
   const player = await prisma.player.findUnique({
     where: { id: playerId },
     include: {
@@ -229,7 +230,7 @@ export const getPlayerProfile = cache(async (playerId: string) => {
 
     return {
       ...metric,
-      label: metricLabel(metric.key),
+      label: metricLabel(metric.key, locale),
       percentile: comparison?.percentile ?? null,
       band: comparison?.band ?? null,
       normMean: comparison?.normMean ?? null,
@@ -262,11 +263,11 @@ export const getPlayerProfile = cache(async (playerId: string) => {
 
   const radar = RADAR_METRICS.map((entry) => {
     const metric = latest.find((m) => m.key === entry.key && !m.side);
-    if (!metric) return { key: entry.key, label: entry.label.fr, percentile: null, value: null };
+    if (!metric) return { key: entry.key, label: entry.label[locale], percentile: null, value: null };
     const comparison = compareToNorm(entry.key, metric.value, population, sex, player.position);
     return {
       key: entry.key,
-      label: entry.label.fr,
+      label: entry.label[locale],
       percentile: comparison?.percentile ?? null,
       value: metric.value,
     };
@@ -405,95 +406,119 @@ export const getSquadOverview = cache(async (teamId: string) => {
 // Libelles des metriques
 // ---------------------------------------------------------------------------
 
-const EXPLICIT_LABELS: Record<string, string> = {
-  sprint_5m: "Sprint 5 m",
-  sprint_10m: "Sprint 10 m",
-  sprint_20m: "Sprint 20 m",
-  sprint_30m: "Sprint 30 m",
-  sprint_40m: "Sprint 40 m",
-  sprint_flying_20: "Vitesse 10 a 30 m",
-  sprint_vmax: "Vitesse maximale",
-  max_speed: "Vitesse maximale",
-  max_speed_ms: "Vitesse maximale",
-  sprint_f0: "F0 force horizontale",
-  sprint_v0: "V0 vitesse theorique",
-  sprint_pmax: "Puissance horizontale",
-  sprint_rfmax: "Ratio de force maximal",
-  sprint_drf: "Decroissance du ratio de force",
-  sprint_tau: "Constante d'acceleration",
-  cmj_height: "Detente CMJ",
-  cmj_power: "Puissance CMJ",
-  cmj_power_rel: "Puissance relative CMJ",
-  cmj_rsi_mod: "RSI modifie",
-  cmj_eur: "Ratio CMJ sur SJ",
-  cmj_asym: "Asymetrie de saut",
-  cmj_sl_height: "Saut unilateral",
-  cmj_bilateral_deficit: "Deficit bilateral",
-  sj_height: "Detente squat jump",
-  sj_power_rel: "Puissance relative SJ",
-  dj_rsi: "Indice de force reactive",
-  dj_height: "Detente drop jump",
-  dj_contact: "Temps de contact",
-  hop_lsi_worst: "Symetrie la plus basse",
-  nordic_force: "Force Nordic",
-  nordic_rel: "Force Nordic relative",
-  nordic_asym: "Asymetrie Nordic",
-  groin_add: "Adduction",
-  groin_add_rel: "Adduction relative",
-  groin_add_asym: "Asymetrie adducteurs",
-  groin_ratio: "Rapport adducteurs sur abducteurs",
-  imtp_peak: "Pic de force IMTP",
-  imtp_rel: "Force relative IMTP",
-  imtp_rfd100: "Gradient de force 100 ms",
-  imtp_rfd200: "Gradient de force 200 ms",
-  dsi: "Indice de force dynamique",
-  lv_onerm: "Maximum estime par la vitesse",
-  lv_slope: "Pente charge vitesse",
-  lv_v0: "Vitesse a charge nulle",
-  cod_505: "Test 505",
-  cod_505_best: "Meilleur 505",
-  cod_505_asym: "Asymetrie 505",
-  cod_deficit: "Deficit de changement de direction",
-  illinois_time: "Test Illinois",
-  t_test_time: "Test en T",
-  vo2max_yoyo: "VO2max (Yo-Yo)",
-  vo2max_ift: "VO2max (30-15)",
-  vo2max_mas: "VO2max (VMA)",
-  vift: "VIFT",
-  mas: "VMA",
-  asr: "Reserve de vitesse anaerobie",
-  yoyo_ir1_distance: "Distance Yo-Yo IR1",
-  yoyo_ir2_distance: "Distance Yo-Yo IR2",
-  bronco_time: "Temps Bronco",
-  bronco_speed: "Vitesse moyenne Bronco",
-  rsa_best: "Meilleur sprint RSA",
-  rsa_mean: "Temps moyen RSA",
-  rsa_total: "Temps total RSA",
-  rsa_decrement: "Decrement RSA",
-  hr_rest: "Frequence de repos",
-  hr_max: "Frequence maximale",
-  hr_max_measured: "Frequence maximale mesuree",
-  hr_reserve: "Reserve cardiaque",
-  height: "Taille",
-  weight: "Masse corporelle",
-  bmi: "Indice de masse corporelle",
-  body_fat: "Masse grasse",
-  lean_mass: "Masse maigre",
-  ffmi: "Indice de masse maigre",
-  maturity_offset: "Ecart au pic de croissance",
-  aphv: "Age au pic de croissance",
-  pct_adult_height: "Pourcentage de taille adulte",
-  dorsiflexion: "Dorsiflexion",
-  dorsiflexion_asym: "Asymetrie de dorsiflexion",
-  sit_and_reach: "Souplesse assis",
-  thomas: "Test de Thomas",
+const EXPLICIT_LABELS: Record<string, readonly [string, string]> = {
+  sprint_5m: ["Sprint 5 m", "5 m sprint"],
+  sprint_10m: ["Sprint 10 m", "10 m sprint"],
+  sprint_20m: ["Sprint 20 m", "20 m sprint"],
+  sprint_30m: ["Sprint 30 m", "30 m sprint"],
+  sprint_40m: ["Sprint 40 m", "40 m sprint"],
+  sprint_flying_20: ["Vitesse 10 a 30 m", "10 to 30 m speed"],
+  sprint_vmax: ["Vitesse maximale", "Maximum speed"],
+  max_speed: ["Vitesse maximale", "Maximum speed"],
+  max_speed_ms: ["Vitesse maximale", "Maximum speed"],
+  sprint_f0: ["F0 force horizontale", "F0 horizontal force"],
+  sprint_v0: ["V0 vitesse theorique", "V0 theoretical velocity"],
+  sprint_pmax: ["Puissance horizontale", "Horizontal power"],
+  sprint_rfmax: ["Ratio de force maximal", "Maximum force ratio"],
+  sprint_drf: ["Decroissance du ratio de force", "Force ratio decrease"],
+  sprint_tau: ["Constante d'acceleration", "Acceleration constant"],
+  cmj_height: ["Detente CMJ", "CMJ height"],
+  cmj_power: ["Puissance CMJ", "CMJ peak power"],
+  cmj_power_rel: ["Puissance relative CMJ", "CMJ relative power"],
+  cmj_rsi_mod: ["RSI modifie", "Modified RSI"],
+  cmj_eur: ["Ratio CMJ sur SJ", "CMJ to SJ ratio"],
+  cmj_asym: ["Asymetrie de saut", "Jump asymmetry"],
+  cmj_sl_height: ["Saut unilateral", "Single leg jump"],
+  cmj_bilateral_deficit: ["Deficit bilateral", "Bilateral deficit"],
+  sj_height: ["Detente squat jump", "Squat jump height"],
+  sj_power_rel: ["Puissance relative SJ", "SJ relative power"],
+  dj_rsi: ["Indice de force reactive", "Reactive strength index"],
+  dj_height: ["Detente drop jump", "Drop jump height"],
+  dj_contact: ["Temps de contact", "Contact time"],
+  hop_lsi_worst: ["Symetrie la plus basse", "Lowest symmetry"],
+  nordic_force: ["Force Nordic", "Nordic force"],
+  nordic_rel: ["Force Nordic relative", "Relative Nordic force"],
+  nordic_asym: ["Asymetrie Nordic", "Nordic asymmetry"],
+  groin_add: ["Adduction", "Adduction"],
+  groin_add_rel: ["Adduction relative", "Relative adduction"],
+  groin_add_asym: ["Asymetrie adducteurs", "Adductor asymmetry"],
+  groin_ratio: ["Rapport adducteurs sur abducteurs", "Adductor to abductor ratio"],
+  imtp_peak: ["Pic de force IMTP", "IMTP peak force"],
+  imtp_rel: ["Force relative IMTP", "IMTP relative force"],
+  imtp_rfd100: ["Gradient de force 100 ms", "RFD 100 ms"],
+  imtp_rfd200: ["Gradient de force 200 ms", "RFD 200 ms"],
+  dsi: ["Indice de force dynamique", "Dynamic strength index"],
+  lv_onerm: ["Maximum estime par la vitesse", "Velocity based maximum"],
+  lv_slope: ["Pente charge vitesse", "Load velocity slope"],
+  lv_v0: ["Vitesse a charge nulle", "Velocity at zero load"],
+  cod_505: ["Test 505", "505 test"],
+  cod_505_best: ["Meilleur 505", "Best 505"],
+  cod_505_asym: ["Asymetrie 505", "505 asymmetry"],
+  cod_deficit: ["Deficit de changement de direction", "Change of direction deficit"],
+  illinois_time: ["Test Illinois", "Illinois test"],
+  t_test_time: ["Test en T", "T test"],
+  vo2max_yoyo: ["VO2max (Yo-Yo)", "VO2max (Yo-Yo)"],
+  vo2max_ift: ["VO2max (30-15)", "VO2max (30-15)"],
+  vo2max_mas: ["VO2max (VMA)", "VO2max (MAS)"],
+  vift: ["VIFT", "VIFT"],
+  mas: ["VMA", "MAS"],
+  asr: ["Reserve de vitesse anaerobie", "Anaerobic speed reserve"],
+  yoyo_ir1_distance: ["Distance Yo-Yo IR1", "Yo-Yo IR1 distance"],
+  yoyo_ir2_distance: ["Distance Yo-Yo IR2", "Yo-Yo IR2 distance"],
+  bronco_time: ["Temps Bronco", "Bronco time"],
+  bronco_speed: ["Vitesse moyenne Bronco", "Bronco average speed"],
+  rsa_best: ["Meilleur sprint RSA", "Best RSA sprint"],
+  rsa_mean: ["Temps moyen RSA", "RSA mean time"],
+  rsa_total: ["Temps total RSA", "RSA total time"],
+  rsa_decrement: ["Decrement RSA", "RSA decrement"],
+  hr_rest: ["Frequence de repos", "Resting heart rate"],
+  hr_max: ["Frequence maximale", "Maximum heart rate"],
+  hr_max_measured: ["Frequence maximale mesuree", "Measured maximum heart rate"],
+  hr_reserve: ["Reserve cardiaque", "Heart rate reserve"],
+  height: ["Taille", "Height"],
+  weight: ["Masse corporelle", "Body mass"],
+  bmi: ["Indice de masse corporelle", "Body mass index"],
+  body_fat: ["Masse grasse", "Body fat"],
+  lean_mass: ["Masse maigre", "Lean mass"],
+  ffmi: ["Indice de masse maigre", "Fat free mass index"],
+  maturity_offset: ["Ecart au pic de croissance", "Maturity offset"],
+  aphv: ["Age au pic de croissance", "Age at peak height velocity"],
+  pct_adult_height: ["Pourcentage de taille adulte", "Percent of adult height"],
+  dorsiflexion: ["Dorsiflexion", "Dorsiflexion"],
+  dorsiflexion_asym: ["Asymetrie de dorsiflexion", "Dorsiflexion asymmetry"],
+  sit_and_reach: ["Souplesse assis", "Sit and reach"],
+  thomas: ["Test de Thomas", "Thomas test"],
 };
 
-export const metricLabel = (key: string): string => {
-  if (EXPLICIT_LABELS[key]) return EXPLICIT_LABELS[key];
-  if (key.startsWith("onerm_rel_")) return `Force relative ${key.replace("onerm_rel_", "").replace(/_/g, " ")}`;
-  if (key.startsWith("onerm_")) return `Maximum ${key.replace("onerm_", "").replace(/_/g, " ")}`;
-  if (key.startsWith("hop_lsi_")) return "Symetrie saut unilateral";
+/** Exercices du test de maximum a une repetition, dont la cle porte le nom. */
+const EXERCISE_LABELS: Record<string, readonly [string, string]> = {
+  back_squat: ["squat arriere", "back squat"],
+  front_squat: ["squat avant", "front squat"],
+  deadlift: ["souleve de terre", "deadlift"],
+  hip_thrust: ["hip thrust", "hip thrust"],
+  bench_press: ["developpe couche", "bench press"],
+  bulgarian_split_squat: ["fente bulgare", "Bulgarian split squat"],
+};
+
+export const metricLabel = (key: string, locale: Locale = "fr"): string => {
+  const index = locale === "en" ? 1 : 0;
+
+  const explicit = EXPLICIT_LABELS[key];
+  if (explicit) return explicit[index];
+
+  const exercise = (raw: string) => EXERCISE_LABELS[raw]?.[index] ?? raw.replace(/_/g, " ");
+
+  if (key.startsWith("onerm_rel_")) {
+    const name = exercise(key.replace("onerm_rel_", ""));
+    return locale === "en" ? `Relative strength ${name}` : `Force relative ${name}`;
+  }
+  if (key.startsWith("onerm_")) {
+    const name = exercise(key.replace("onerm_", ""));
+    return locale === "en" ? `Estimated maximum ${name}` : `Maximum ${name}`;
+  }
+  if (key.startsWith("hop_lsi_")) {
+    return locale === "en" ? "Single leg hop symmetry" : "Symetrie saut unilateral";
+  }
   return key.replace(/_/g, " ");
 };
 

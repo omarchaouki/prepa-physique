@@ -13,3 +13,24 @@ npm-debug.log*
 .idea/
 coverage/
 .supabase/
+prisma/dev.db
+prisma/*.db
+prisma/*.db-journal
+tsconfig.tsbuildinfo
+
+# Android
+# Le dossier android est versionne (icones, theme, manifeste), mais pas ce que
+# Gradle regenere, ni les cles de signature, ni les APK produits.
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/.idea/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+dist-apk/
+*.jks
+*.keystore
+

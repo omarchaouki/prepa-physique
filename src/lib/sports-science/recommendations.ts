@@ -51,19 +51,30 @@ export interface RecommendationContext {
   playerName: string;
 }
 
-const AREA_LABELS: Record<Area, string> = {
-  PREVENTION: "Prevention",
-  FORCE: "Force",
-  VITESSE: "Vitesse",
-  ENDURANCE: "Endurance",
-  CHANGEMENT_DIRECTION: "Changement de direction",
-  COMPOSITION: "Composition corporelle",
-  MOBILITE: "Mobilite",
-  CROISSANCE: "Croissance",
-  DONNEES: "Donnees manquantes",
+const AREA_LABELS: Record<Area, readonly [fr: string, en: string]> = {
+  PREVENTION: ["Prevention", "Prevention"],
+  FORCE: ["Force", "Strength"],
+  VITESSE: ["Vitesse", "Speed"],
+  ENDURANCE: ["Endurance", "Endurance"],
+  CHANGEMENT_DIRECTION: ["Changement de direction", "Change of direction"],
+  COMPOSITION: ["Composition corporelle", "Body composition"],
+  MOBILITE: ["Mobilite", "Mobility"],
+  CROISSANCE: ["Croissance", "Growth"],
+  DONNEES: ["Donnees manquantes", "Missing data"],
 };
 
-export const areaLabel = (area: Area): string => AREA_LABELS[area];
+export const areaLabel = (area: Area, locale: "fr" | "en" = "fr"): string =>
+  AREA_LABELS[area][locale === "en" ? 1 : 0];
+
+export const SEVERITY_LABELS: Record<Severity, readonly [fr: string, en: string]> = {
+  critique: ["Critique", "Critical"],
+  important: ["Important", "Important"],
+  suivi: ["A suivre", "Monitor"],
+  information: ["Information", "Information"],
+};
+
+export const severityLabel = (severity: Severity, locale: "fr" | "en" = "fr"): string =>
+  SEVERITY_LABELS[severity][locale === "en" ? 1 : 0];
 
 const SEVERITY_RANK: Record<Severity, number> = {
   critique: 0,

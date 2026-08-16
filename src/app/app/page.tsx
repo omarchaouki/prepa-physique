@@ -10,12 +10,8 @@ import {
 } from "lucide-react";
 
 import { requireUser, type CurrentUser } from "@/lib/auth";
-import {
-  getDashboardStats,
-  getRecentSessions,
-  getSquadAlerts,
-  listTeams,
-} from "@/lib/queries";
+import { getDashboardStats, getRecentSessions, getSquadAlerts, listTeams } from "@/lib/queries";
+import { getLocaleTag, getT } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/utils";
 import {
   Badge,
@@ -25,11 +21,7 @@ import {
   PanelHeader,
   StatCard,
 } from "@/components/ui/primitives";
-import {
-  SkeletonCards,
-  SkeletonList,
-  SkeletonStats,
-} from "@/components/ui/skeleton";
+import { SkeletonCards, SkeletonList, SkeletonStats } from "@/components/ui/skeleton";
 
 export const dynamic = "force-dynamic";
 
@@ -43,10 +35,8 @@ export const dynamic = "force-dynamic";
  * evaluent les recommandations de chaque joueur, ne retardent plus rien.
  */
 
-// ---------------------------------------------------------------------------
-
 async function StatsSection({ user }: { user: CurrentUser }) {
-  const stats = await getDashboardStats(user);
+  const [stats, t, tag] = await Promise.all([getDashboardStats(user), getT(), getLocaleTag()]);
   const daysSinceLastTest = stats.lastTestDate
     ? Math.floor((Date.now() - stats.lastTestDate.getTime()) / 86_400_000)
     : null;
@@ -54,29 +44,29 @@ async function StatsSection({ user }: { user: CurrentUser }) {
   return (
     <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <StatCard
-        label="Equipes"
+        label={t("dashboard.statTeams")}
         value={stats.teamCount}
-        hint={stats.teamCount > 1 ? "suivies" : "suivie"}
+        hint={stats.teamCount > 1 ? t("dashboard.statTeamsHintMany") : t("dashboard.statTeamsHintOne")}
         icon={<UsersRound size={15} />}
       />
       <StatCard
-        label="Joueurs"
+        label={t("dashboard.statPlayers")}
         value={stats.playerCount}
-        hint={`${stats.injuredCount} indisponibles`}
+        hint={`${stats.injuredCount} ${t("dashboard.statPlayersHint")}`}
         tone={stats.injuredCount > 0 ? "warning" : "neutral"}
         icon={<Activity size={15} />}
       />
       <StatCard
-        label="Passations"
+        label={t("dashboard.statSessions")}
         value={stats.sessionCount}
-        hint="depuis le debut"
+        hint={t("dashboard.statSessionsHint")}
         icon={<ClipboardList size={15} />}
       />
       <StatCard
-        label="Dernier test"
+        label={t("dashboard.statLastTest")}
         value={daysSinceLastTest === null ? "—" : daysSinceLastTest}
-        unit={daysSinceLastTest === null ? undefined : "j"}
-        hint={stats.lastTestDate ? formatDate(stats.lastTestDate) : "aucune donnee"}
+        unit={daysSinceLastTest === null ? undefined : t("common.days")}
+        hint={stats.lastTestDate ? formatDate(stats.lastTestDate, tag) : t("dashboard.statLastTestNone")}
         tone={daysSinceLastTest !== null && daysSinceLastTest > 60 ? "warning" : "neutral"}
         icon={<CalendarClock size={15} />}
       />
@@ -84,16 +74,14 @@ async function StatsSection({ user }: { user: CurrentUser }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-
 async function AlertsSection({ user }: { user: CurrentUser }) {
-  const alerts = await getSquadAlerts(user);
+  const [alerts, t] = await Promise.all([getSquadAlerts(user), getT()]);
 
   if (alerts.length === 0) {
     return (
       <EmptyState
-        title="Aucune alerte active"
-        description="Aucun joueur ne depasse les seuils de vigilance sur les tests enregistres."
+        title={t("dashboard.noAlerts")}
+        description={t("dashboard.noAlertsBody")}
         icon={<AlertTriangle size={20} />}
       />
     );
@@ -124,16 +112,21 @@ async function AlertsSection({ user }: { user: CurrentUser }) {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium truncate">{alert.playerName}</p>
               <p className="text-[0.75rem] truncate" style={{ color: "var(--text-muted)" }}>
-                {alert.teamName} · {alert.position} · {alert.ageYears.toFixed(0)} ans
+                {alert.teamName} · {alert.position} · {alert.ageYears.toFixed(0)} {t("common.years")}
               </p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               {alert.criticalAlerts > 0 ? (
                 <Badge tone="danger">
-                  {alert.criticalAlerts} critique{alert.criticalAlerts > 1 ? "s" : ""}
+                  {alert.criticalAlerts}{" "}
+                  {alert.criticalAlerts > 1
+                    ? t("dashboard.criticalMany")
+                    : t("dashboard.criticalOne")}
                 </Badge>
               ) : null}
-              <Badge tone="warning">{alert.alerts} alertes</Badge>
+              <Badge tone="warning">
+                {alert.alerts} {t("dashboard.alerts")}
+              </Badge>
             </div>
           </Link>
         </li>
@@ -142,20 +135,18 @@ async function AlertsSection({ user }: { user: CurrentUser }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-
 async function RecentSessionsSection({ user }: { user: CurrentUser }) {
-  const sessions = await getRecentSessions(user);
+  const [sessions, t, tag] = await Promise.all([getRecentSessions(user), getT(), getLocaleTag()]);
 
   if (sessions.length === 0) {
     return (
       <EmptyState
-        title="Aucune passation"
-        description="Commencez par creer une session de tests."
+        title={t("dashboard.noSessions")}
+        description={t("dashboard.noSessionsBody")}
         action={
           <Link href="/app/sessions/new" className="btn btn-primary">
             <Plus size={15} aria-hidden="true" />
-            Creer une passation
+            {t("dashboard.createSession")}
           </Link>
         }
         icon={<ClipboardList size={20} />}
@@ -173,7 +164,8 @@ async function RecentSessionsSection({ user }: { user: CurrentUser }) {
           >
             <p className="text-sm font-medium truncate">{session.name}</p>
             <p className="text-[0.75rem] mt-0.5 tabular" style={{ color: "var(--text-muted)" }}>
-              {formatDate(session.date)} · {session.team.name} · {session._count.results} resultats
+              {formatDate(session.date, tag)} · {session.team.name} · {session._count.results}{" "}
+              {t("dashboard.results")}
             </p>
           </Link>
         </li>
@@ -182,16 +174,14 @@ async function RecentSessionsSection({ user }: { user: CurrentUser }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-
 async function TeamsSection({ user }: { user: CurrentUser }) {
-  const teams = await listTeams(user);
+  const [teams, t] = await Promise.all([listTeams(user), getT()]);
 
   if (teams.length === 0) {
     return (
       <EmptyState
-        title="Aucune equipe"
-        description="Votre administrateur doit vous rattacher a une equipe pour commencer."
+        title={t("dashboard.noTeams")}
+        description={t("dashboard.noTeamsBody")}
         icon={<UsersRound size={20} />}
       />
     );
@@ -219,7 +209,8 @@ async function TeamsSection({ user }: { user: CurrentUser }) {
               <div className="flex items-center gap-1.5 mt-2">
                 <Badge tone="brand">{team.category}</Badge>
                 <span className="text-[0.75rem] tabular" style={{ color: "var(--text-muted)" }}>
-                  {team._count.players} joueurs · {team._count.testSessions} passations
+                  {team._count.players} {t("common.players")} · {team._count.testSessions}{" "}
+                  {t("dashboard.sessions")}
                 </span>
               </div>
             </div>
@@ -230,20 +221,18 @@ async function TeamsSection({ user }: { user: CurrentUser }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-
 export default async function DashboardPage() {
-  const user = await requireUser();
+  const [user, t] = await Promise.all([requireUser(), getT()]);
 
   return (
     <>
       <PageHeader
-        title={`Bonjour ${user.name.split(" ")[0]}`}
-        description="Vue d'ensemble de vos equipes, des dernieres passations et des joueurs a surveiller."
+        title={`${t("dashboard.greeting")} ${user.name.split(" ")[0]}`}
+        description={t("dashboard.subtitle")}
         action={
           <Link href="/app/sessions/new" className="btn btn-primary">
             <Plus size={16} aria-hidden="true" />
-            Nouvelle passation
+            {t("dashboard.newSession")}
           </Link>
         }
       />
@@ -257,8 +246,8 @@ export default async function DashboardPage() {
       <div className="grid lg:grid-cols-3 gap-4">
         <Panel className="lg:col-span-2">
           <PanelHeader
-            title="Joueurs a surveiller"
-            subtitle="Classes par gravite des alertes issues des dernieres mesures"
+            title={t("dashboard.watchlist")}
+            subtitle={t("dashboard.watchlistSubtitle")}
             icon={<AlertTriangle size={16} />}
           />
           <Suspense fallback={<SkeletonList items={6} />}>
@@ -268,8 +257,8 @@ export default async function DashboardPage() {
 
         <Panel>
           <PanelHeader
-            title="Dernieres passations"
-            subtitle="Les cinq plus recentes"
+            title={t("dashboard.recentSessions")}
+            subtitle={t("dashboard.recentSessionsSubtitle")}
             icon={<ClipboardList size={16} />}
           />
           <Suspense fallback={<SkeletonList items={5} avatar={false} />}>
@@ -280,12 +269,12 @@ export default async function DashboardPage() {
 
       <Panel className="mt-4">
         <PanelHeader
-          title="Vos equipes"
-          subtitle="Acces direct a l'effectif et aux analyses"
+          title={t("dashboard.yourTeams")}
+          subtitle={t("dashboard.yourTeamsSubtitle")}
           icon={<UsersRound size={16} />}
           action={
             <Link href="/app/teams" className="btn btn-ghost">
-              Tout voir
+              {t("common.viewAll")}
             </Link>
           }
         />

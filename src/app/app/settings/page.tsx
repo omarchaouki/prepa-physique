@@ -1,18 +1,20 @@
 import { Suspense } from "react";
-import { KeyRound, User } from "lucide-react";
+import { KeyRound, Languages, User } from "lucide-react";
 
 import { requireUser, type CurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ROLE_LABELS } from "@/lib/constants";
+import { getLocale, getLocaleTag, getT } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/utils";
 import { PageHeader, Panel, PanelHeader } from "@/components/ui/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LanguageChoice } from "@/components/shell/language-switcher";
 import { ChangePasswordForm } from "./change-password-form";
 
 export const dynamic = "force-dynamic";
 
 async function AccountDetails({ user }: { user: CurrentUser }) {
-  const [record, teams] = await Promise.all([
+  const [record, teams, t, locale, tag] = await Promise.all([
     prisma.user.findUnique({
       where: { id: user.id },
       select: { createdAt: true, lastLoginAt: true, jobTitle: true },
@@ -21,21 +23,24 @@ async function AccountDetails({ user }: { user: CurrentUser }) {
       where: { userId: user.id },
       include: { team: { select: { name: true, category: true } } },
     }),
+    getT(),
+    getLocale(),
+    getLocaleTag(),
   ]);
 
   return (
     <>
       <dl className="space-y-2.5 text-sm">
         {[
-          ["Nom", user.name],
-          ["Adresse email", user.email],
-          ["Role", ROLE_LABELS[user.role].fr],
-          ["Fonction", record?.jobTitle ?? "non renseignee"],
-          ["Organisation", user.organizationName ?? "aucune (compte proprietaire)"],
-          ["Compte cree le", record?.createdAt ? formatDate(record.createdAt) : "—"],
+          [t("common.name"), user.name],
+          [t("login.email"), user.email],
+          [t("settings.role"), ROLE_LABELS[user.role][locale]],
+          [t("settings.jobTitle"), record?.jobTitle ?? t("settings.jobTitleNone")],
+          [t("settings.organization"), user.organizationName ?? t("settings.organizationNone")],
+          [t("settings.createdAt"), record?.createdAt ? formatDate(record.createdAt, tag) : "—"],
           [
-            "Derniere connexion",
-            record?.lastLoginAt ? formatDate(record.lastLoginAt) : "premiere connexion",
+            t("settings.lastLogin"),
+            record?.lastLoginAt ? formatDate(record.lastLoginAt, tag) : t("settings.firstLogin"),
           ],
         ].map(([label, value]) => (
           <div
@@ -51,7 +56,7 @@ async function AccountDetails({ user }: { user: CurrentUser }) {
 
       {teams.length > 0 ? (
         <div className="mt-4">
-          <p className="text-[0.8125rem] font-medium mb-1.5">Equipes rattachees</p>
+          <p className="text-[0.8125rem] font-medium mb-1.5">{t("settings.teams")}</p>
           <ul className="space-y-1 text-[0.8125rem]" style={{ color: "var(--text-secondary)" }}>
             {teams.map((membership) => (
               <li key={membership.id} className="flex justify-between gap-3">
@@ -59,7 +64,9 @@ async function AccountDetails({ user }: { user: CurrentUser }) {
                   {membership.team.name} · {membership.team.category}
                 </span>
                 <span style={{ color: "var(--text-muted)" }}>
-                  {membership.accessLevel === "MANAGE" ? "gestion" : "lecture"}
+                  {membership.accessLevel === "MANAGE"
+                    ? t("settings.accessManage")
+                    : t("settings.accessView")}
                 </span>
               </li>
             ))}
@@ -71,15 +78,15 @@ async function AccountDetails({ user }: { user: CurrentUser }) {
 }
 
 export default async function SettingsPage() {
-  const user = await requireUser();
+  const [user, t, locale] = await Promise.all([requireUser(), getT(), getLocale()]);
 
   return (
     <>
-      <PageHeader title="Parametres" description="Votre compte et vos acces." />
+      <PageHeader title={t("settings.title")} description={t("settings.subtitle")} />
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Panel>
-          <PanelHeader title="Compte" icon={<User size={16} />} />
+          <PanelHeader title={t("settings.account")} icon={<User size={16} />} />
           <Suspense
             fallback={
               <div className="space-y-3">
@@ -96,14 +103,25 @@ export default async function SettingsPage() {
           </Suspense>
         </Panel>
 
-        <Panel>
-          <PanelHeader
-            title="Mot de passe"
-            subtitle="Le changer deconnecte toutes vos autres sessions"
-            icon={<KeyRound size={16} />}
-          />
-          <ChangePasswordForm />
-        </Panel>
+        <div className="space-y-4">
+          <Panel>
+            <PanelHeader
+              title={t("settings.language")}
+              subtitle={t("settings.languageSubtitle")}
+              icon={<Languages size={16} />}
+            />
+            <LanguageChoice current={locale} />
+          </Panel>
+
+          <Panel>
+            <PanelHeader
+              title={t("settings.password")}
+              subtitle={t("settings.passwordSubtitle")}
+              icon={<KeyRound size={16} />}
+            />
+            <ChangePasswordForm />
+          </Panel>
+        </div>
       </div>
     </>
   );

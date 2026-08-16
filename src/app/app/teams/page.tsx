@@ -5,20 +5,21 @@ import { ChevronRight, UsersRound } from "lucide-react";
 import { requireUser, type CurrentUser } from "@/lib/auth";
 import { listTeams } from "@/lib/queries";
 import { TEAM_LEVEL_LABELS, type TeamLevel } from "@/lib/constants";
+import { getLocale, getT } from "@/lib/i18n/server";
 import { Badge, EmptyState, PageHeader, Panel } from "@/components/ui/primitives";
 import { SkeletonCards } from "@/components/ui/skeleton";
 
 export const dynamic = "force-dynamic";
 
 async function TeamsGrid({ user }: { user: CurrentUser }) {
-  const teams = await listTeams(user);
+  const [teams, t, locale] = await Promise.all([listTeams(user), getT(), getLocale()]);
 
   if (teams.length === 0) {
     return (
       <Panel>
         <EmptyState
-          title="Aucune equipe accessible"
-          description="Demandez a l'administrateur de votre club de vous rattacher a une equipe."
+          title={t("teams.none")}
+          description={t("teams.noneBody")}
           icon={<UsersRound size={20} />}
         />
       </Panel>
@@ -61,7 +62,7 @@ async function TeamsGrid({ user }: { user: CurrentUser }) {
                     <div className="min-w-0">
                       <p className="font-medium truncate">{team.name}</p>
                       <p className="text-[0.8125rem] mt-0.5" style={{ color: "var(--text-muted)" }}>
-                        Saison {team.season}
+                        {t("teams.season")} {team.season}
                       </p>
                     </div>
                   </div>
@@ -71,7 +72,7 @@ async function TeamsGrid({ user }: { user: CurrentUser }) {
                 <div className="flex flex-wrap items-center gap-1.5 mt-3">
                   <Badge tone="brand">{team.category}</Badge>
                   {team.level ? (
-                    <Badge>{TEAM_LEVEL_LABELS[team.level as TeamLevel]?.fr ?? team.level}</Badge>
+                    <Badge>{TEAM_LEVEL_LABELS[team.level as TeamLevel]?.[locale] ?? team.level}</Badge>
                   ) : null}
                 </div>
 
@@ -84,7 +85,7 @@ async function TeamsGrid({ user }: { user: CurrentUser }) {
                       {team._count.players}
                     </p>
                     <p className="text-[0.75rem] mt-0.5" style={{ color: "var(--text-muted)" }}>
-                      joueurs
+                      {t("common.players")}
                     </p>
                   </div>
                   <div>
@@ -92,7 +93,7 @@ async function TeamsGrid({ user }: { user: CurrentUser }) {
                       {team._count.testSessions}
                     </p>
                     <p className="text-[0.75rem] mt-0.5" style={{ color: "var(--text-muted)" }}>
-                      passations
+                      {t("dashboard.sessions")}
                     </p>
                   </div>
                 </div>
@@ -106,14 +107,11 @@ async function TeamsGrid({ user }: { user: CurrentUser }) {
 }
 
 export default async function TeamsPage() {
-  const user = await requireUser();
+  const [user, t] = await Promise.all([requireUser(), getT()]);
 
   return (
     <>
-      <PageHeader
-        title="Equipes"
-        description="Chaque equipe regroupe son effectif, ses passations de tests et ses analyses."
-      />
+      <PageHeader title={t("teams.title")} description={t("teams.subtitle")} />
       <Suspense fallback={<SkeletonCards count={3} />}>
         <TeamsGrid user={user} />
       </Suspense>

@@ -192,7 +192,7 @@ export const broncoTest: TestDefinition = {
   },
   equipment: { fr: "Trois plots, chronometre", en: "Three cones, stopwatch" },
   durationMin: 12,
-  reference: "Protocole des All Blacks, valeurs de reference rugby et football",
+  reference: "All Blacks protocol, rugby and football reference values",
   fields: [{ key: "time", label: { fr: "Temps total", en: "Total time" }, unit: "s", type: "number", step: 0.1, min: 200, max: 500 }],
   compute: (raw) => {
     const time = num(raw, "time");

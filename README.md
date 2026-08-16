@@ -183,6 +183,158 @@ Trois optimisations completent le dispositif :
 - un middleware verifie la signature du jeton sans toucher la base, ce qui
   redirige un visiteur non connecte en quelques millisecondes
 
+## Qui peut modifier quoi
+
+| | Proprietaire | Admin club | Preparateur | Analyste, lecture |
+|---|---|---|---|---|
+| Creer et suspendre un club | oui | non | non | non |
+| Forfait et plafonds d'un club | oui | non | non | non |
+| Coordonnees de son club | oui | oui | non | non |
+| Creer une equipe | oui | oui | non | non |
+| Reglages d'une equipe | oui | oui | sur ses equipes | non |
+| Archiver une equipe | oui | oui | non | non |
+| Rattacher du staff a une equipe | oui | oui | non | non |
+| Ajouter et modifier des joueurs | oui | oui | sur ses equipes | non |
+| Saisir des resultats de tests | oui | oui | sur ses equipes | non |
+| Creer des comptes | oui | non | non | non |
+
+Un preparateur agit sur les equipes auxquelles il est rattache avec le droit de
+gestion, jamais au dela. Un administrateur de club agit sur tout son club, jamais
+sur un autre.
+
+Le forfait et les plafonds restent la main du proprietaire : un client ne releve
+pas ses propres limites. Les plafonds sont verifies a la creation, un club au
+maximum de son forfait reçoit un message explicite plutot qu'un echec silencieux.
+
+Chaque droit est reverifie cote serveur a partir de la session, jamais a partir
+de ce que le formulaire a envoye : une requete forgee n'ouvre aucun acces que
+l'interface ne donnerait pas.
+
+### Ou se trouvent ces ecrans
+
+- **Effectif et reglages d'une equipe** : page de l'equipe, bouton *Gerer*.
+  Ajout de joueur avec formulaire qui se rearme apres chaque enregistrement,
+  pour saisir un effectif entier sans quitter la page.
+- **Fiche d'un joueur** : bouton *Modifier*. Permet aussi de le transferer vers
+  une autre equipe, ou de le supprimer definitivement avec son historique.
+- **Mon club** : dans la barre laterale des administrateurs de club. Coordonnees,
+  creation d'equipes et vue d'ensemble des equipes du club.
+
+Pour sortir un joueur de l'effectif en gardant ses donnees, passer son statut a
+*Parti* plutot que le supprimer. La suppression efface tout son historique de
+mesures et n'est la que pour les saisies erronees.
+
+## Langues
+
+L'interface existe en francais et en anglais. Sont traduits : les menus, les
+ecrans, les tableaux, les graphiques, les libelles de metriques, ainsi que les
+noms, descriptions, protocoles et champs de saisie des tests.
+
+Le contenu du moteur de recommandations reste en francais pour l'instant.
+
+Le choix se fait depuis la barre laterale ou depuis les parametres. Il est
+enregistre dans le profil de l'utilisateur, donc conserve d'un appareil a
+l'autre. Un choix fait sur l'ecran de connexion l'emporte sur la preference
+enregistree et met celle ci a jour : c'est le geste le plus recent qui gagne.
+
+Les nombres et les dates suivent la langue active, `fr-FR` ou `en-GB`.
+
+Toutes les chaines vivent dans un fichier unique, `src/lib/i18n/dictionary.ts`,
+avec les deux langues cote a cote. Les cles sont typees : une cle inexistante ou
+une traduction oubliee arrete la compilation au lieu d'afficher un texte brut en
+production.
+
+## Application Android
+
+L'APK est une coque native produite par Capacitor. L'application etant rendue
+cote serveur, il n'y a rien a embarquer : la coque se connecte a l'adresse de
+production. **Une mise a jour de l'application ne demande donc jamais de
+redistribuer l'APK**, ce qui compte quand des clubs l'ont deja installe.
+
+Ce que la coque apporte par rapport a un simple raccourci navigateur : icone et
+nom dans le tiroir d'applications, ecran de demarrage, barre d'etat aux couleurs
+de la marque, bouton retour materiel qui remonte dans l'historique, et un ecran
+propre quand le serveur est injoignable au lieu du message d'erreur brut de
+Chrome.
+
+### Produire l'APK
+
+```bash
+npm run android:apk -- --url https://prepa.mondomaine.com
+```
+
+Le fichier atterrit dans `dist-apk/`. C'est un APK de debogage : il s'installe
+directement sur un telephone, sans signature a preparer, ce qui suffit pour une
+distribution en direct aux clubs.
+
+### Version signee
+
+Un APK de debogage est marque `debuggable` : n'importe qui peut y attacher un
+debogueur. C'est sans consequence pour un essai, mais pas pour une application
+distribuee a des clubs qui y saisissent des donnees de sante.
+
+Creer la cle de signature, une seule fois :
+
+```bash
+npm run android:keystore
+```
+
+Le mot de passe est demande a l'ecran et n'est enregistre nulle part. **Le noter
+dans un gestionnaire de mots de passe et copier `android/release.jks` hors de la
+machine** : Android considere qu'une application signee avec une autre cle est
+une autre application, donc perdre cette cle oblige tous les clubs a desinstaller
+puis reinstaller pour recevoir la moindre mise a jour.
+
+Compiler ensuite :
+
+```bash
+ANDROID_KEYSTORE_PASSWORD=... npm run android:apk -- --url https://lamsaa.ma --release
+```
+
+Sous PowerShell :
+
+```bash
+$env:ANDROID_KEYSTORE_PASSWORD="..."; npm run android:apk -- --url https://lamsaa.ma --release
+```
+
+### Tester sur un telephone avant deploiement
+
+Le telephone doit etre sur le meme reseau Wi-Fi que la machine de developpement :
+
+```bash
+npm run dev
+npm run android:apk -- --url http://192.168.1.20:3200
+```
+
+Remplacer par l'adresse locale de la machine. Le trafic en clair n'est autorise
+que pour une adresse `http://`, jamais en production : la commande refuse de
+construire une version `--release` sur une adresse non chiffree.
+
+### Changer l'adresse, l'icone ou le nom
+
+L'adresse du serveur est gravee a la compilation, il suffit de reconstruire avec
+une autre valeur de `--url`.
+
+Les icones et les ecrans de demarrage sont dessines par un script, pas stockes
+en binaire : changer la couleur de marque dans
+`scripts/generate-android-assets.py` puis relancer
+
+```bash
+npm run android:assets && npm run android:sync
+```
+
+L'identifiant de l'application, `ma.lamsaa.prepaphysique`, est defini dans
+`capacitor.config.ts`. **Il ne doit plus changer une fois l'APK distribue** :
+Android considere un identifiant different comme une autre application, et les
+clubs se retrouveraient avec deux icones au lieu d'une mise a jour.
+
+### Chaine de compilation
+
+JDK 17, Gradle et le SDK Android 35. Capacitor est volontairement en version 6 :
+la version 7 exige le JDK 21, absent de la machine de developpement. Pour passer
+a Capacitor 7 plus tard, installer le JDK 21 puis relever les versions des
+paquets `@capacitor/*`.
+
 ## Deux points de methode importants
 
 ### Declenchement du chronometre sur le sprint
@@ -315,6 +467,8 @@ doit donc etre lance qu'une seule fois, au premier deploiement.
 
 ### 5. Mises a jour
 
+Sur l'instance Lightsail :
+
 ```bash
 git pull && docker compose up -d --build
 ```
@@ -322,7 +476,22 @@ git pull && docker compose up -d --build
 Si le schema a change :
 
 ```bash
-docker compose exec app npx prisma db push
+docker compose run --rm tools npx prisma db push
+```
+
+L'application est servie par le serveur, donc **une mise a jour ne demande pas
+de redistribuer l'APK** : les telephones qui l'ont installe reçoivent la
+nouvelle version au rechargement. L'APK n'est a reconstruire que si l'adresse du
+serveur, l'icone ou le nom de l'application changent.
+
+### Creer le compte proprietaire sans effacer les donnees
+
+Le seed vide les tables avant d'ecrire, il ne doit donc jamais etre relance sur
+une base en service. Pour creer ou reinitialiser le compte proprietaire a partir
+du `.env` :
+
+```bash
+docker compose run --rm tools npx tsx scripts/ensure-owner.ts
 ```
 
 ### Sauvegarde
@@ -358,14 +527,21 @@ Settings, et se lit aussi dans l'adresse du pooler.
 Dockerfile                 image de production, sortie autonome
 docker-compose.yml         application et reverse proxy, base externe
 Caddyfile                  TLS automatique, streaming non mis en tampon
+capacitor.config.ts        coque Android : adresse du serveur, splash, icone
+www/offline.html           ecran affiche quand le serveur est injoignable
+android/                   projet natif genere, versionne pour ses reglages
 prisma/
   schema.prisma            schema unique, compatible SQLite et PostgreSQL
   seed.ts                  jeu de demonstration coherent avec les normes
 scripts/
   verify-science.ts        controle des calculs contre la litterature
   check-percentiles.ts     controle du calibrage des normes
+  check-connection.ts      test de connexion et latence de la base
+  ensure-owner.ts          cree le compte proprietaire sans toucher aux donnees
   inspect-session.ts       inspection d'une passation
   set-db-provider.mjs      bascule SQLite vers PostgreSQL
+  generate-android-assets.py  dessine icones et ecrans de demarrage
+  build-apk.mjs            produit l'APK pour une adresse donnee
 src/
   lib/sports-science/      coeur scientifique, aucune dependance a la base
     sprint.ts              profil force vitesse (Samozino)
@@ -381,6 +557,10 @@ src/
     catalog/               definition des tests et des batteries
   lib/auth.ts              sessions, roles, isolation des donnees, audit
   lib/queries.ts           acces aux donnees, requetes legeres et lourdes separees
+  lib/i18n/
+    dictionary.ts          toutes les chaines, francais et anglais cote a cote
+    server.ts              langue et traducteur pour les composants serveur
+    client.tsx             meme chose pour les composants client
   middleware.ts            filtre d'acces sans requete a la base
   app/                     pages et actions serveur
     */loading.tsx          reponse immediate a la navigation

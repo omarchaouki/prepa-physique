@@ -3,6 +3,7 @@ import { ScrollText } from "lucide-react";
 
 import { requireOwner } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getLocaleTag, getT } from "@/lib/i18n/server";
 import { Badge, EmptyState, PageHeader, Panel } from "@/components/ui/primitives";
 import { Skeleton, SkeletonTable } from "@/components/ui/skeleton";
 
@@ -18,15 +19,18 @@ const ACTION_TONE: Record<string, "neutral" | "brand" | "success" | "warning" | 
   EXPORT: "neutral",
 };
 
-const dateTime = new Intl.DateTimeFormat("fr-FR", {
+const dateTimeFormat = (tag: string) =>
+  new Intl.DateTimeFormat(tag, {
   day: "2-digit",
   month: "2-digit",
   year: "numeric",
   hour: "2-digit",
-  minute: "2-digit",
-});
+    minute: "2-digit",
+  });
 
 async function AuditContent({ action, page }: { action?: string; page?: string }) {
+  const [t, tag] = await Promise.all([getT(), getLocaleTag()]);
+  const dateTime = dateTimeFormat(tag);
   const pageSize = 60;
   const currentPage = Math.max(1, Number(page ?? 1) || 1);
   const where = action && action !== "ALL" ? { action } : {};
@@ -58,7 +62,7 @@ async function AuditContent({ action, page }: { action?: string; page?: string }
             border: "1px solid var(--border-strong)",
           }}
         >
-          Toutes ({total})
+          {t("admin.auditAll")} ({total})
         </a>
         {actions.map((entry) => (
           <a
@@ -78,18 +82,18 @@ async function AuditContent({ action, page }: { action?: string; page?: string }
 
       <Panel padded={false}>
         {entries.length === 0 ? (
-          <EmptyState title="Aucune entree" icon={<ScrollText size={20} />} />
+          <EmptyState title={t("admin.auditNone")} icon={<ScrollText size={20} />} />
         ) : (
           <div className="scroll-x">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th scope="col">Horodatage</th>
-                  <th scope="col">Action</th>
-                  <th scope="col">Auteur</th>
-                  <th scope="col">Entite</th>
-                  <th scope="col">Detail</th>
-                  <th scope="col">Adresse</th>
+                  <th scope="col">{t("admin.timestamp")}</th>
+                  <th scope="col">{t("admin.action")}</th>
+                  <th scope="col">{t("admin.author")}</th>
+                  <th scope="col">{t("admin.entity")}</th>
+                  <th scope="col">{t("admin.detail")}</th>
+                  <th scope="col">{t("admin.address")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -102,7 +106,7 @@ async function AuditContent({ action, page }: { action?: string; page?: string }
                       <Badge tone={ACTION_TONE[entry.action] ?? "neutral"}>{entry.action}</Badge>
                     </td>
                     <td>
-                      <span className="block truncate">{entry.user?.name ?? "compte supprime"}</span>
+                      <span className="block truncate">{entry.user?.name ?? t("admin.deletedAccount")}</span>
                       <span className="block text-[0.75rem]" style={{ color: "var(--text-muted)" }}>
                         {entry.actorEmail}
                       </span>
@@ -128,23 +132,23 @@ async function AuditContent({ action, page }: { action?: string; page?: string }
       </Panel>
 
       {totalPages > 1 ? (
-        <nav className="flex items-center justify-between mt-3" aria-label="Pagination du journal">
+        <nav className="flex items-center justify-between mt-3" aria-label={t("admin.pagination")}>
           <a
             href={`/admin/audit?${action ? `action=${action}&` : ""}page=${currentPage - 1}`}
             className="btn btn-secondary"
             style={{ visibility: currentPage > 1 ? "visible" : "hidden" }}
           >
-            Page precedente
+            {t("admin.previousPage")}
           </a>
           <span className="text-[0.8125rem] tabular" style={{ color: "var(--text-muted)" }}>
-            Page {currentPage} sur {totalPages}
+            {t("admin.page")} {currentPage} / {totalPages}
           </span>
           <a
             href={`/admin/audit?${action ? `action=${action}&` : ""}page=${currentPage + 1}`}
             className="btn btn-secondary"
             style={{ visibility: currentPage < totalPages ? "visible" : "hidden" }}
           >
-            Page suivante
+            {t("admin.nextPage")}
           </a>
         </nav>
       ) : null}
@@ -157,14 +161,13 @@ export default async function AuditPage({
 }: {
   searchParams: Promise<{ action?: string; page?: string }>;
 }) {
-  await requireOwner();
-  const { action, page } = await searchParams;
+  const [, t, { action, page }] = await Promise.all([requireOwner(), getT(), searchParams]);
 
   return (
     <>
       <PageHeader
-        title="Journal d'audit"
-        description="Chaque action sensible est enregistree avec son auteur, sa cible et son horodatage."
+title={t("admin.audit")}
+        description={t("admin.auditSubtitle")}
       />
 
       {/* La cle relance le squelette quand on change de filtre ou de page. */}

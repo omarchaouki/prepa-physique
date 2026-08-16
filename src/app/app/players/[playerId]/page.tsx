@@ -9,6 +9,7 @@ import {
   Gauge,
   Info,
   Lightbulb,
+  Pencil,
   Radar as RadarIcon,
   Scale,
   TrendingUp,
@@ -22,8 +23,10 @@ import {
   type PlayerStatus,
   type Position,
 } from "@/lib/constants";
-import { areaLabel, type Severity } from "@/lib/sports-science/recommendations";
+import { areaLabel, severityLabel, type Severity } from "@/lib/sports-science/recommendations";
 import { getTest } from "@/lib/sports-science/catalog";
+import { getLocale, getLocaleTag, getT, pick } from "@/lib/i18n/server";
+import type { Locale, Translator } from "@/lib/i18n/dictionary";
 import { ageExact, formatDate, formatNumber, percentileColor } from "@/lib/utils";
 import {
   Alert,
@@ -66,13 +69,6 @@ const SEVERITY_TONE: Record<Severity, "danger" | "warning" | "info" | "neutral">
   information: "neutral",
 };
 
-const SEVERITY_LABEL: Record<Severity, string> = {
-  critique: "Critique",
-  important: "Important",
-  suivi: "A suivre",
-  information: "Information",
-};
-
 const HIGHLIGHT_METRICS: Array<{ key: string; decimals: number; higherIsBetter: boolean }> = [
   { key: "sprint_10m", decimals: 3, higherIsBetter: false },
   { key: "sprint_vmax", decimals: 1, higherIsBetter: true },
@@ -90,12 +86,19 @@ const DECIMALS: Record<string, number> = {
 
 const decimalsFor = (key: string) => DECIMALS[key] ?? 2;
 
+/** Contexte linguistique commun a toutes les zones de la fiche. */
+const localeBundle = async (): Promise<{ t: Translator; locale: Locale; tag: string }> => {
+  const [t, locale, tag] = await Promise.all([getT(), getLocale(), getLocaleTag()]);
+  return { t, locale, tag };
+};
+
 // ---------------------------------------------------------------------------
 // Indicateurs cles
 // ---------------------------------------------------------------------------
 
 async function HighlightsSection({ playerId }: { playerId: string }) {
-  const profile = await getPlayerProfile(playerId);
+  const { t, locale, tag } = await localeBundle();
+  const profile = await getPlayerProfile(playerId, locale);
   if (!profile) return null;
 
   const find = (key: string) => profile.comparisons.find((c) => c.key === key && !c.side);
@@ -108,9 +111,9 @@ async function HighlightsSection({ playerId }: { playerId: string }) {
           return (
             <StatCard
               key={highlight.key}
-              label={metricLabel(highlight.key)}
+              label={metricLabel(highlight.key, locale)}
               value="—"
-              hint="test non realise"
+              hint={t("player.testNotDone")}
             />
           );
         }
@@ -127,11 +130,13 @@ async function HighlightsSection({ playerId }: { playerId: string }) {
         return (
           <StatCard
             key={highlight.key}
-            label={metricLabel(highlight.key)}
-            value={formatNumber(metric.value, highlight.decimals)}
+            label={metricLabel(highlight.key, locale)}
+            value={formatNumber(metric.value, highlight.decimals, tag)}
             unit={metric.unit}
             hint={
-              metric.percentile !== null ? `${metric.percentile}e percentile` : formatDate(metric.date)
+              metric.percentile !== null
+                ? `${metric.percentile}${t("player.percentileSuffix")}`
+                : formatDate(metric.date, tag)
             }
             tone={tone}
             trend={
@@ -151,7 +156,8 @@ async function HighlightsSection({ playerId }: { playerId: string }) {
 // ---------------------------------------------------------------------------
 
 async function RadarSection({ playerId }: { playerId: string }) {
-  const profile = await getPlayerProfile(playerId);
+  const { t, locale } = await localeBundle();
+  const profile = await getPlayerProfile(playerId, locale);
   if (!profile) return null;
 
   return (
@@ -166,7 +172,7 @@ async function RadarSection({ playerId }: { playerId: string }) {
             {entry.percentile !== null ? (
               <PercentileBar percentile={entry.percentile} />
             ) : (
-              <span style={{ color: "var(--text-muted)" }}>non mesure</span>
+              <span style={{ color: "var(--text-muted)" }}>{t("common.notMeasured")}</span>
             )}
           </div>
         ))}
@@ -180,7 +186,8 @@ async function RadarSection({ playerId }: { playerId: string }) {
 // ---------------------------------------------------------------------------
 
 async function RecommendationsSection({ playerId }: { playerId: string }) {
-  const profile = await getPlayerProfile(playerId);
+  const { t, locale } = await localeBundle();
+  const profile = await getPlayerProfile(playerId, locale);
   if (!profile) return null;
 
   const { recommendations } = profile;
@@ -188,8 +195,8 @@ async function RecommendationsSection({ playerId }: { playerId: string }) {
   if (recommendations.length === 0) {
     return (
       <EmptyState
-        title="Aucune recommandation"
-        description="Aucun seuil n'est franchi sur les donnees disponibles."
+        title={t("player.noRecommendations")}
+        description={t("player.noRecommendationsBody")}
         icon={<Lightbulb size={20} />}
       />
     );
@@ -213,9 +220,9 @@ async function RecommendationsSection({ playerId }: { playerId: string }) {
         >
           <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
             <Badge tone={SEVERITY_TONE[recommendation.severity]}>
-              {SEVERITY_LABEL[recommendation.severity]}
+              {severityLabel(recommendation.severity, locale)}
             </Badge>
-            <Badge>{areaLabel(recommendation.area)}</Badge>
+            <Badge>{areaLabel(recommendation.area, locale)}</Badge>
           </div>
 
           <p className="font-medium text-[0.9375rem]">{recommendation.title}</p>
@@ -246,8 +253,14 @@ async function RecommendationsSection({ playerId }: { playerId: string }) {
             className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2.5 pt-2 text-[0.75rem]"
             style={{ borderTop: "1px solid var(--border-subtle)", color: "var(--text-muted)" }}
           >
-            {recommendation.weeklyDose ? <span>Dose : {recommendation.weeklyDose}</span> : null}
-            <span>Source : {recommendation.reference}</span>
+            {recommendation.weeklyDose ? (
+              <span>
+                {t("player.dose")} : {recommendation.weeklyDose}
+              </span>
+            ) : null}
+            <span>
+              {t("common.source")} : {recommendation.reference}
+            </span>
           </div>
         </li>
       ))}
@@ -260,7 +273,8 @@ async function RecommendationsSection({ playerId }: { playerId: string }) {
 // ---------------------------------------------------------------------------
 
 async function TrendsSection({ playerId }: { playerId: string }) {
-  const profile = await getPlayerProfile(playerId);
+  const { locale } = await localeBundle();
+  const profile = await getPlayerProfile(playerId, locale);
   if (!profile) return null;
 
   const { metrics, comparisons } = profile;
@@ -273,7 +287,7 @@ async function TrendsSection({ playerId }: { playerId: string }) {
       const comparison = find(key);
       return {
         key,
-        label: metricLabel(key),
+        label: metricLabel(key, locale),
         unit: comparison?.unit ?? "",
         decimals: decimalsFor(key),
         higherIsBetter: comparison?.higherIsBetter ?? true,
@@ -292,7 +306,8 @@ async function TrendsSection({ playerId }: { playerId: string }) {
 // ---------------------------------------------------------------------------
 
 async function AsymmetrySection({ playerId }: { playerId: string }) {
-  const profile = await getPlayerProfile(playerId);
+  const { t, locale, tag } = await localeBundle();
+  const profile = await getPlayerProfile(playerId, locale);
   if (!profile) return null;
 
   const { comparisons } = profile;
@@ -302,7 +317,12 @@ async function AsymmetrySection({ playerId }: { playerId: string }) {
       const left = comparisons.find((c) => c.key === key && c.side === "L");
       const right = comparisons.find((c) => c.key === key && c.side === "R");
       if (!left || !right) return null;
-      return { label: metricLabel(key), left: left.value, right: right.value, unit: left.unit };
+      return {
+        label: metricLabel(key, locale),
+        left: left.value,
+        right: right.value,
+        unit: left.unit,
+      };
     })
     .filter((item): item is NonNullable<typeof item> => item !== null);
 
@@ -314,10 +334,10 @@ async function AsymmetrySection({ playerId }: { playerId: string }) {
           <table className="data-table">
             <thead>
               <tr>
-                <th scope="col">Mesure</th>
-                <th scope="col">Gauche</th>
-                <th scope="col">Droite</th>
-                <th scope="col">Ecart</th>
+                <th scope="col">{t("player.measure")}</th>
+                <th scope="col">{t("player.left")}</th>
+                <th scope="col">{t("player.right")}</th>
+                <th scope="col">{t("player.gap")}</th>
               </tr>
             </thead>
             <tbody>
@@ -329,10 +349,10 @@ async function AsymmetrySection({ playerId }: { playerId: string }) {
                   <tr key={item.label}>
                     <td className="font-medium">{item.label}</td>
                     <td className="tabular">
-                      {formatNumber(item.left, 1)} {item.unit}
+                      {formatNumber(item.left, 1, tag)} {item.unit}
                     </td>
                     <td className="tabular">
-                      {formatNumber(item.right, 1)} {item.unit}
+                      {formatNumber(item.right, 1, tag)} {item.unit}
                     </td>
                     <td
                       className="tabular font-medium"
@@ -341,7 +361,7 @@ async function AsymmetrySection({ playerId }: { playerId: string }) {
                           gap > 15 ? "var(--danger)" : gap > 10 ? "var(--warning)" : "var(--success)",
                       }}
                     >
-                      {formatNumber(gap, 1)} %
+                      {formatNumber(gap, 1, tag)} %
                     </td>
                   </tr>
                 );
@@ -359,7 +379,8 @@ async function AsymmetrySection({ playerId }: { playerId: string }) {
 // ---------------------------------------------------------------------------
 
 async function ForceVelocitySection({ playerId }: { playerId: string }) {
-  const profile = await getPlayerProfile(playerId);
+  const { t, locale, tag } = await localeBundle();
+  const profile = await getPlayerProfile(playerId, locale);
   if (!profile) return null;
 
   const find = (key: string) => profile.comparisons.find((c) => c.key === key && !c.side);
@@ -370,8 +391,8 @@ async function ForceVelocitySection({ playerId }: { playerId: string }) {
   if (!f0 || !v0 || !pmax) {
     return (
       <EmptyState
-        title="Profil non disponible"
-        description="Realiser un sprint lineaire avec au moins deux temps de passage pour reconstruire le profil."
+        title={t("player.fvUnavailable")}
+        description={t("player.fvUnavailableBody")}
         icon={<Gauge size={20} />}
       />
     );
@@ -394,7 +415,7 @@ async function ForceVelocitySection({ playerId }: { playerId: string }) {
               {item.label}
             </p>
             <p className="text-lg font-semibold tabular mt-0.5">
-              {formatNumber(item.metric.value, 2)}
+              {formatNumber(item.metric.value, 2, tag)}
             </p>
             <p className="text-[0.6875rem]" style={{ color: "var(--text-muted)" }}>
               {item.unit}
@@ -404,15 +425,15 @@ async function ForceVelocitySection({ playerId }: { playerId: string }) {
                 className="text-[0.6875rem] mt-1 tabular font-medium"
                 style={{ color: percentileColor(item.metric.percentile) }}
               >
-                {item.metric.percentile}e percentile
+                {item.metric.percentile}
+                {t("player.percentileSuffix")}
               </p>
             ) : null}
           </div>
         ))}
       </div>
       <p className="text-[0.75rem] mt-2.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>
-        F0 represente la force horizontale disponible au demarrage, V0 la vitesse theorique maximale.
-        Le rapport entre les deux oriente le contenu du travail de vitesse.
+        {t("player.fvNote")}
       </p>
     </>
   );
@@ -423,7 +444,8 @@ async function ForceVelocitySection({ playerId }: { playerId: string }) {
 // ---------------------------------------------------------------------------
 
 async function MeasuresSection({ playerId }: { playerId: string }) {
-  const profile = await getPlayerProfile(playerId);
+  const { t, locale, tag } = await localeBundle();
+  const profile = await getPlayerProfile(playerId, locale);
   if (!profile) return null;
 
   const rows = profile.comparisons
@@ -441,13 +463,13 @@ async function MeasuresSection({ playerId }: { playerId: string }) {
         <table className="data-table">
           <thead>
             <tr>
-              <th scope="col" style={{ minWidth: "13rem" }}>Metrique</th>
-              <th scope="col">Valeur</th>
-              <th scope="col">Evolution</th>
-              <th scope="col">Reference</th>
-              <th scope="col" style={{ minWidth: "9rem" }}>Percentile</th>
-              <th scope="col">Groupe</th>
-              <th scope="col">Date</th>
+              <th scope="col" style={{ minWidth: "13rem" }}>{t("teams.metric")}</th>
+              <th scope="col">{t("common.value")}</th>
+              <th scope="col">{t("player.change")}</th>
+              <th scope="col">{t("player.reference")}</th>
+              <th scope="col" style={{ minWidth: "9rem" }}>{t("player.percentile")}</th>
+              <th scope="col">{t("player.group")}</th>
+              <th scope="col">{t("common.date")}</th>
             </tr>
           </thead>
           <tbody>
@@ -455,7 +477,7 @@ async function MeasuresSection({ playerId }: { playerId: string }) {
               <tr key={`${comparison.key}-${comparison.side ?? ""}`}>
                 <td className="font-medium">{comparison.label}</td>
                 <td className="tabular">
-                  {formatNumber(comparison.value, decimalsFor(comparison.key))}{" "}
+                  {formatNumber(comparison.value, decimalsFor(comparison.key), tag)}{" "}
                   <span style={{ color: "var(--text-muted)" }}>{comparison.unit}</span>
                 </td>
                 <td className="tabular">
@@ -477,14 +499,14 @@ async function MeasuresSection({ playerId }: { playerId: string }) {
                       }}
                     >
                       {comparison.changePct > 0 ? "+" : ""}
-                      {formatNumber(comparison.changePct, 1)} %
+                      {formatNumber(comparison.changePct, 1, tag)} %
                     </span>
                   )}
                 </td>
                 <td className="tabular" style={{ color: "var(--text-muted)" }}>
                   {comparison.normMean === null
                     ? "—"
-                    : formatNumber(comparison.normMean, decimalsFor(comparison.key))}
+                    : formatNumber(comparison.normMean, decimalsFor(comparison.key), tag)}
                 </td>
                 <td>
                   {comparison.percentile !== null ? (
@@ -506,16 +528,15 @@ async function MeasuresSection({ playerId }: { playerId: string }) {
                               ? "var(--warning)"
                               : "var(--danger)",
                       }}
-                      title="Lecture par seuil publie et non par percentile"
                     >
                       {comparison.thresholdStatus === "bon"
-                        ? "Sous le seuil"
+                        ? t("player.belowThreshold")
                         : comparison.thresholdStatus === "vigilance"
-                          ? "Vigilance"
-                          : "Au dela du seuil"}
+                          ? t("player.caution")
+                          : t("player.aboveThreshold")}
                     </span>
                   ) : (
-                    <span style={{ color: "var(--text-muted)" }}>non reference</span>
+                    <span style={{ color: "var(--text-muted)" }}>{t("player.notReferenced")}</span>
                   )}
                 </td>
                 <td className="tabular">
@@ -524,11 +545,11 @@ async function MeasuresSection({ playerId }: { playerId: string }) {
                   ) : (
                     <span style={{ color: "var(--text-secondary)" }}>
                       {comparison.vsSquadPct > 0 ? "+" : ""}
-                      {formatNumber(comparison.vsSquadPct, 1)} %
+                      {formatNumber(comparison.vsSquadPct, 1, tag)} %
                     </span>
                   )}
                 </td>
-                <td style={{ color: "var(--text-muted)" }}>{formatDate(comparison.date)}</td>
+                <td style={{ color: "var(--text-muted)" }}>{formatDate(comparison.date, tag)}</td>
               </tr>
             ))}
           </tbody>
@@ -537,11 +558,8 @@ async function MeasuresSection({ playerId }: { playerId: string }) {
 
       {profile.comparisons.some((c) => c.percentile === null) ? (
         <div className="mt-3">
-          <Alert tone="info" title="Lecture des metriques sans percentile">
-            Les indices d'asymetrie sont lus par seuil publie, pas en percentile : leur distribution
-            est bornee a zero et un rang gaussien y serait trompeur. Les autres mesures sans
-            reference restent suivies dans le temps par rapport a l'historique du joueur, ce qui est
-            de toute facon la comparaison la plus fiable.
+          <Alert tone="info" title={t("player.thresholdTitle")}>
+            {t("player.thresholdBody")}
           </Alert>
         </div>
       ) : null}
@@ -554,13 +572,14 @@ async function MeasuresSection({ playerId }: { playerId: string }) {
 // ---------------------------------------------------------------------------
 
 async function HistorySection({ playerId }: { playerId: string }) {
-  const profile = await getPlayerProfile(playerId);
+  const { t, locale, tag } = await localeBundle();
+  const profile = await getPlayerProfile(playerId, locale);
   if (!profile) return null;
 
   const { results } = profile;
 
   if (results.length === 0) {
-    return <EmptyState title="Aucun test enregistre" icon={<ClipboardList size={20} />} />;
+    return <EmptyState title={t("player.noTests")} icon={<ClipboardList size={20} />} />;
   }
 
   return (
@@ -568,10 +587,10 @@ async function HistorySection({ playerId }: { playerId: string }) {
       <table className="data-table">
         <thead>
           <tr>
-            <th scope="col">Date</th>
-            <th scope="col">Test</th>
-            <th scope="col">Passation</th>
-            <th scope="col">Alertes</th>
+            <th scope="col">{t("common.date")}</th>
+            <th scope="col">{t("player.test")}</th>
+            <th scope="col">{t("player.session")}</th>
+            <th scope="col">{t("squad.alerts")}</th>
           </tr>
         </thead>
         <tbody>
@@ -585,8 +604,10 @@ async function HistorySection({ playerId }: { playerId: string }) {
             }
             return (
               <tr key={result.id}>
-                <td style={{ color: "var(--text-secondary)" }}>{formatDate(result.date)}</td>
-                <td className="font-medium">{definition?.name.fr ?? result.testKey}</td>
+                <td style={{ color: "var(--text-secondary)" }}>{formatDate(result.date, tag)}</td>
+                <td className="font-medium">
+                  {definition ? pick(definition.name, locale) : result.testKey}
+                </td>
                 <td>
                   {result.session ? (
                     <Link
@@ -597,7 +618,9 @@ async function HistorySection({ playerId }: { playerId: string }) {
                       {result.session.name}
                     </Link>
                   ) : (
-                    <span style={{ color: "var(--text-muted)" }}>saisie isolee</span>
+                    <span style={{ color: "var(--text-muted)" }}>
+                      {t("player.standaloneEntry")}
+                    </span>
                   )}
                 </td>
                 <td>
@@ -627,9 +650,14 @@ async function HistorySection({ playerId }: { playerId: string }) {
 export default async function PlayerPage({ params }: { params: Promise<{ playerId: string }> }) {
   const { playerId } = await params;
 
-  // Les deux requetes sont independantes : les lancer ensemble economise un
-  // aller retour complet, ce qui se voit des que la base est distante.
-  const [user, player] = await Promise.all([requireUser(), getPlayerIdentity(playerId)]);
+  // Les requetes sont independantes : les lancer ensemble economise un aller
+  // retour complet, ce qui se voit des que la base est distante.
+  const [user, player, t, locale] = await Promise.all([
+    requireUser(),
+    getPlayerIdentity(playerId),
+    getT(),
+    getLocale(),
+  ]);
   if (!player) notFound();
 
   const access = await canAccessTeam(user, player.teamId);
@@ -638,6 +666,13 @@ export default async function PlayerPage({ params }: { params: Promise<{ playerI
   const ageYears = ageExact(player.birthDate);
   const statusTone =
     player.status === "INJURED" ? "danger" : player.status === "REHAB" ? "warning" : "success";
+
+  const footLabel =
+    player.dominantFoot === "L"
+      ? t("players.footLeft")
+      : player.dominantFoot === "B"
+        ? t("players.footBoth")
+        : t("players.footRight");
 
   return (
     <>
@@ -653,21 +688,28 @@ export default async function PlayerPage({ params }: { params: Promise<{ playerI
           </Link>
         }
         title={`${player.firstName} ${player.lastName}`}
-        description={`${POSITION_LABELS[player.position as Position]?.fr ?? player.position} · ${ageYears.toFixed(1)} ans · ${player.team.organization.name}`}
+        description={`${POSITION_LABELS[player.position as Position]?.[locale] ?? player.position} · ${ageYears.toFixed(1)} ${t("common.years")} · ${player.team.organization.name}`}
+        action={
+          access.canEdit ? (
+            <Link href={`/app/players/${playerId}/edit`} className="btn btn-secondary">
+              <Pencil size={15} aria-hidden="true" />
+              {t("common.edit")}
+            </Link>
+          ) : null
+        }
       />
 
       <div className="flex flex-wrap items-center gap-1.5 mb-4">
         <Badge tone={statusTone}>
-          {PLAYER_STATUS_LABELS[player.status as PlayerStatus]?.fr ?? player.status}
+          {PLAYER_STATUS_LABELS[player.status as PlayerStatus]?.[locale] ?? player.status}
         </Badge>
-        {player.jerseyNumber ? <Badge>Numero {player.jerseyNumber}</Badge> : null}
+        {player.jerseyNumber ? (
+          <Badge>
+            {t("players.jersey")} {player.jerseyNumber}
+          </Badge>
+        ) : null}
         <Badge>
-          Pied{" "}
-          {player.dominantFoot === "L"
-            ? "gauche"
-            : player.dominantFoot === "B"
-              ? "des deux"
-              : "droit"}
+          {t("players.foot")} {footLabel}
         </Badge>
         {player.heightCm ? <Badge>{player.heightCm} cm</Badge> : null}
         {player.weightKg ? <Badge>{player.weightKg} kg</Badge> : null}
@@ -682,8 +724,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ playerI
       <div className="grid lg:grid-cols-3 gap-4 mb-4">
         <Panel>
           <PanelHeader
-            title="Profil physique"
-            subtitle="Percentiles par rapport a la population de reference"
+            title={t("player.profile")}
+            subtitle={t("player.profileSubtitle")}
             icon={<RadarIcon size={16} />}
           />
           <Suspense fallback={<SkeletonRadar height={280} />}>
@@ -693,8 +735,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ playerI
 
         <Panel className="lg:col-span-2">
           <PanelHeader
-            title="Recommandations"
-            subtitle="Issues des dernieres mesures et des seuils publies"
+            title={t("player.recommendations")}
+            subtitle={t("player.recommendationsSubtitle")}
             icon={<Lightbulb size={16} />}
           />
           <Suspense
@@ -720,8 +762,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ playerI
 
       <Panel className="mb-4">
         <PanelHeader
-          title="Evolution dans le temps"
-          subtitle="Comparee a la moyenne de la population de reference"
+          title={t("player.trend")}
+          subtitle={t("player.trendSubtitle")}
           icon={<TrendingUp size={16} />}
         />
         <Suspense
@@ -739,8 +781,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ playerI
       <div className="grid lg:grid-cols-2 gap-4 mb-4">
         <Panel>
           <PanelHeader
-            title="Comparaison gauche droite"
-            subtitle="Un ecart superieur a 10 a 15% justifie un travail unilateral"
+            title={t("player.asymmetry")}
+            subtitle={t("player.asymmetrySubtitle")}
             icon={<Scale size={16} />}
           />
           <Suspense fallback={<SkeletonChart height={200} />}>
@@ -750,8 +792,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ playerI
 
         <Panel>
           <PanelHeader
-            title="Profil force vitesse horizontal"
-            subtitle="Methode de Samozino, reconstruite a partir des temps de passage"
+            title={t("player.fvProfile")}
+            subtitle={t("player.fvProfileSubtitle")}
             icon={<Gauge size={16} />}
           />
           <Suspense fallback={<SkeletonChart height={230} />}>
@@ -762,8 +804,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ playerI
 
       <Panel className="mb-4">
         <PanelHeader
-          title="Toutes les mesures"
-          subtitle="Classees du percentile le plus faible au plus eleve"
+          title={t("player.allMeasures")}
+          subtitle={t("player.allMeasuresSubtitle")}
           icon={<Activity size={16} />}
         />
         <Suspense fallback={<SkeletonTable rows={10} columns={7} firstColumnWide={false} />}>
@@ -773,8 +815,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ playerI
 
       <Panel>
         <PanelHeader
-          title="Historique des passations"
-          subtitle="Tests enregistres pour ce joueur"
+          title={t("player.history")}
+          subtitle={t("player.historySubtitle")}
           icon={<ClipboardList size={16} />}
         />
         <Suspense fallback={<SkeletonList items={5} avatar={false} />}>
@@ -787,9 +829,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ playerI
         style={{ color: "var(--text-muted)" }}
       >
         <Info size={14} className="shrink-0 mt-0.5" aria-hidden="true" />
-        Les percentiles situent le joueur par rapport aux valeurs publiees pour sa categorie. Ce sont
-        des reperes de population, pas des objectifs individuels. La reference la plus fiable reste
-        l'evolution du joueur par rapport a lui meme.
+        {t("player.footer")}
       </p>
     </>
   );

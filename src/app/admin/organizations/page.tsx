@@ -5,6 +5,7 @@ import { requireOwner } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { toggleOrganizationAction } from "@/app/actions/admin";
 import { PLANS } from "@/lib/constants";
+import { getLocaleTag, getT } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/utils";
 import { Badge, PageHeader, Panel, PanelHeader } from "@/components/ui/primitives";
 import { Skeleton, SkeletonTable } from "@/components/ui/skeleton";
@@ -13,6 +14,7 @@ import { CreateOrganizationForm, CreateTeamForm } from "./forms";
 export const dynamic = "force-dynamic";
 
 async function OrganizationList() {
+  const [t, tag] = await Promise.all([getT(), getLocaleTag()]);
   const organizations = await prisma.organization.findMany({
     include: {
       _count: { select: { users: true, teams: true } },
@@ -34,7 +36,7 @@ async function OrganizationList() {
     return (
       <Panel>
         <p className="text-sm py-8 text-center" style={{ color: "var(--text-muted)" }}>
-          Aucun club enregistre. Creez le premier avec le formulaire a droite.
+          {t("admin.noClubs")}
         </p>
       </Panel>
     );
@@ -52,15 +54,15 @@ async function OrganizationList() {
                   <h2 className="font-semibold">{organization.name}</h2>
                   <Badge tone="brand">{organization.plan}</Badge>
                   <Badge tone={organization.isActive ? "success" : "danger"}>
-                    {organization.isActive ? "Actif" : "Suspendu"}
+                    {organization.isActive ? t("admin.active") : t("admin.suspended")}
                   </Badge>
                 </div>
                 <p className="text-[0.8125rem] mt-1" style={{ color: "var(--text-muted)" }}>
                   {[organization.city, organization.country].filter(Boolean).join(", ") ||
-                    "Localisation non renseignee"}
+t("admin.locationUnknown")}
                   {" · "}
-                  cree le {formatDate(organization.createdAt)}
-                  {organization.expiresAt ? ` · expire le ${formatDate(organization.expiresAt)}` : ""}
+                  {t("admin.createdOn")} {formatDate(organization.createdAt, tag)}
+                  {organization.expiresAt ? ` · ${t("admin.expiresOn")} ${formatDate(organization.expiresAt, tag)}` : ""}
                 </p>
               </div>
 
@@ -75,18 +77,18 @@ async function OrganizationList() {
                   className={organization.isActive ? "btn btn-secondary" : "btn btn-primary"}
                 >
                   <Power size={15} aria-hidden="true" />
-                  {organization.isActive ? "Suspendre" : "Reactiver"}
+                  {organization.isActive ? t("admin.suspend") : t("admin.reactivate")}
                 </button>
               </form>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
               {[
-                { label: "Equipes", value: `${organization._count.teams} / ${organization.maxTeams}` },
-                { label: "Joueurs", value: `${playerCount} / ${organization.maxPlayers}` },
-                { label: "Utilisateurs", value: organization._count.users },
+                { label: t("admin.teams"), value: `${organization._count.teams} / ${organization.maxTeams}` },
+                { label: t("dashboard.statPlayers"), value: `${playerCount} / ${organization.maxPlayers}` },
+                { label: t("admin.users"), value: organization._count.users },
                 {
-                  label: "Passations",
+label: t("dashboard.statSessions"),
                   value: organization.teams.reduce((a, t) => a + t._count.testSessions, 0),
                 },
               ].map((stat) => (
@@ -107,11 +109,11 @@ async function OrganizationList() {
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th scope="col">Equipe</th>
-                      <th scope="col">Categorie</th>
-                      <th scope="col">Saison</th>
-                      <th scope="col">Joueurs</th>
-                      <th scope="col">Passations</th>
+                      <th scope="col">{t("players.team")}</th>
+                      <th scope="col">{t("admin.category")}</th>
+                      <th scope="col">{t("admin.season")}</th>
+                      <th scope="col">{t("dashboard.statPlayers")}</th>
+                      <th scope="col">{t("dashboard.statSessions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -129,7 +131,7 @@ async function OrganizationList() {
               </div>
             ) : (
               <p className="text-[0.8125rem]" style={{ color: "var(--text-muted)" }}>
-                Aucune equipe pour ce club.
+                {t("admin.noTeamsForClub")}
               </p>
             )}
           </Panel>
@@ -148,13 +150,13 @@ async function TeamFormSection() {
 }
 
 export default async function OrganizationsPage() {
-  await requireOwner();
+  const [, t] = await Promise.all([requireOwner(), getT()]);
 
   return (
     <>
       <PageHeader
-        title="Clubs"
-        description="Chaque club est isole des autres. Ses utilisateurs ne voient que ses propres equipes et joueurs."
+title={t("admin.clubs")}
+        description={t("admin.clubsSubtitle")}
       />
 
       <div className="grid lg:grid-cols-3 gap-4">
@@ -187,15 +189,15 @@ export default async function OrganizationsPage() {
         <div className="space-y-4">
           <Panel>
             <PanelHeader
-              title="Nouveau club"
-              subtitle="Ouvrir un compte client"
+title={t("admin.newClub")}
+              subtitle={t("admin.newClubSubtitle")}
               icon={<Building2 size={16} />}
             />
             <CreateOrganizationForm plans={[...PLANS]} />
           </Panel>
 
           <Panel>
-            <PanelHeader title="Nouvelle equipe" subtitle="Rattachee a un club existant" />
+<PanelHeader title={t("admin.newTeam")} subtitle={t("admin.newTeamSubtitle")} />
             <Suspense
               fallback={
                 <div className="space-y-3">
