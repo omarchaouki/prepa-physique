@@ -5,23 +5,24 @@ Genere le logo, les icones et l'ecran de lancement de l'application mobile.
 Le signe
 --------------------------------------------------------------------------
 
-Une courbe vitesse temps de sprint : montee raide, puis plateau, avec le point
-de mesure a l'extremite. C'est litteralement ce que l'application mesure, et
-c'est la forme que tout preparateur physique reconnait immediatement.
+La ligne de pouls, exactement celle du site : meme trace, meme bleu, meme
+proportions. C'est le signe que les clients connaissent deja.
 
-Le signe precedent etait l'icone Activity d'une bibliotheque generique, la meme
-que celle de milliers d'applications de sante. Une marque revendue a des clubs
-ne peut pas se contenter d'un pictogramme d'inventaire.
+Une application et un site qui portent deux signes differents ne donnent pas
+l'impression de deux produits, mais d'un produit mal fini. La coherence vaut
+plus qu'un dessin plus original.
+
+Le trace est celui de l'icone Activity, sur une grille de 24 unites, repris
+tel quel de scripts/generate-android-assets.py pour que les deux generateurs
+ne divergent jamais.
 
 Contraintes de lisibilite tenues ici :
 
 . Le trace reste lisible a 48 pixels, la plus petite taille d'un lanceur
-  Android. Aucun detail ne descend sous une epaisseur de trait de 7 % du cote.
-. L'icone adaptative Android est rognee en cercle par certains lanceurs, et son
-  quart exterieur peut disparaitre. Le signe tient donc dans le cercle central
-  de 66 %, comme l'exige la documentation Android.
-. L'icone de notification est monochrome blanche sur fond transparent : Android
-  ignore les couleurs et ne garde que l'alpha depuis la version 5.
+  Android.
+. L'icone adaptative est rognee, parfois en cercle : le signe tient dans les
+  66 % centraux, comme l'exige la documentation Android.
+. La couche monochrome ne garde que la silhouette, Android la recolorise.
 
 Usage : python mobile/scripts/generate-assets.py
 """
@@ -41,16 +42,9 @@ INK = (10, 15, 28)  # #0A0F1C, le fond sombre de l'interface
 SCALE = 8
 
 
-def bezier(p0, p1, p2, p3, steps=120):
-    """Points d'une courbe cubique, pour tracer autre chose que des segments."""
-    points = []
-    for i in range(steps + 1):
-        t = i / steps
-        u = 1 - t
-        x = u**3 * p0[0] + 3 * u**2 * t * p1[0] + 3 * u * t**2 * p2[0] + t**3 * p3[0]
-        y = u**3 * p0[1] + 3 * u**2 * t * p1[1] + 3 * u * t**2 * p2[1] + t**3 * p3[1]
-        points.append((x, y))
-    return points
+# Trace de la ligne de pouls, sur une grille de 24 unites. Identique a celui de
+# scripts/generate-android-assets.py, qui sert la coque Capacitor.
+PULSE = [(22, 12), (18, 12), (15, 21), (9, 3), (6, 12), (2, 12)]
 
 
 def draw_mark(size: int, colour, ratio: float = 1.0) -> Image.Image:
@@ -60,60 +54,33 @@ def draw_mark(size: int, colour, ratio: float = 1.0) -> Image.Image:
     `ratio` reduit le signe dans son cadre : 1.0 le fait toucher les bords de sa
     zone utile, 0.62 le place dans la zone sure d'une icone adaptative.
 
-    Le trait est obtenu en tamponnant un disque le long de la courbe plutot
-    qu'avec `draw.line(width=...)`. Pillow assemble en effet un polygone de
-    jointure a chaque point, et ces polygones se recouvrent en laissant des
-    coutures visibles sur un trait epais. Le tampon donne un trait parfaitement
-    lisse, avec des bouts ronds gratuits.
+    Le trait est compose de segments, chacun tamponne par un disque a ses deux
+    extremites. `draw.line(width=...)` laisse en effet des coutures visibles aux
+    angles vifs, et cette ligne en compte quatre, dont deux tres fermes au
+    sommet et au creux du pic.
     """
     big = size * SCALE
     image = Image.new("RGBA", (big, big), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
 
-    # Repere local sur une grille de 24, centre puis reduit selon `ratio`.
     span = big * ratio
     offset = (big - span) / 2
 
     def point(x: float, y: float) -> tuple[float, float]:
         return (offset + span * x / 24, offset + span * y / 24)
 
-    stroke = max(2.0, span * 0.082)
+    stroke = max(2.0, span * 0.093)
     radius = stroke / 2
 
-    # Ligne de base : l'axe du temps. Discrete, elle ancre la courbe sans
-    # entrer en concurrence avec elle.
-    faint = colour + (110,) if len(colour) == 3 else colour
-    thin = max(1.0, stroke * 0.30)
-    bx0, by = point(3.0, 20.2)
-    bx1, _ = point(21.0, 20.2)
-    draw.rounded_rectangle(
-        [bx0, by - thin / 2, bx1, by + thin / 2], radius=thin / 2, fill=faint
-    )
+    pixels = [point(x, y) for x, y in PULSE]
 
-    # Courbe de vitesse d'un sprint : montee tres raide au depart, puis plateau
-    # franchement horizontal a la vitesse maximale. Les points de controle sont
-    # choisis pour que la tangente de depart soit presque verticale et celle
-    # d'arrivee presque plate : c'est ce contraste qui rend la courbe lisible
-    # comme une courbe, et non comme une diagonale quelconque.
-    curve = bezier(
-        point(4.4, 19.4),
-        point(6.2, 10.2),
-        point(13.6, 6.6),
-        point(19.3, 6.4),
-        steps=240,
-    )
-    for x, y in curve:
+    for index in range(len(pixels) - 1):
+        draw.line([pixels[index], pixels[index + 1]], fill=colour, width=int(round(stroke)))
+
+    # Bouts et angles arrondis : sans eux, les quatre sommets de la ligne
+    # apparaissent tronques a plat, ce qui se voit beaucoup a petite taille.
+    for x, y in pixels:
         draw.ellipse([x - radius, y - radius, x + radius, y + radius], fill=colour)
-
-    # Point de mesure a la vitesse maximale : le geste du chronometre qui
-    # s'arrete. Un anneau plutot qu'un disque, pour ne pas epaissir la courbe.
-    cx, cy = curve[-1]
-    outer = stroke * 1.30
-    draw.ellipse([cx - outer, cy - outer, cx + outer, cy + outer], fill=colour)
-    inner = stroke * 0.52
-    draw.ellipse(
-        [cx - inner, cy - inner, cx + inner, cy + inner], fill=(0, 0, 0, 0)
-    )
 
     return image.resize((size, size), Image.LANCZOS)
 

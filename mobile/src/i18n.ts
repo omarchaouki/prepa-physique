@@ -17,8 +17,9 @@ export type Locale = "fr" | "en";
 type Entry = readonly [fr: string, en: string];
 
 export const MESSAGES = {
-  "app.name": ["Lamsaa", "Lamsaa"],
-  "app.tagline": ["Preparation physique", "Physical preparation"],
+  "app.name": ["Prepa Physique", "Prepa Physique"],
+  "app.publisher": ["Lamsaa", "Lamsaa"],
+  "app.tagline": ["Une saison se mesure", "A season is measured"],
 
   "login.title": ["Connexion", "Sign in"],
   "login.subtitle": [
@@ -57,6 +58,16 @@ export const MESSAGES = {
   "sync.never": ["Jamais synchronise", "Never synced"],
   "sync.now": ["Synchroniser", "Sync now"],
   "sync.failed": ["Synchronisation impossible", "Sync failed"],
+  "sync.ready": ["Pret pour le hors ligne", "Ready for offline"],
+  "sync.notReady": ["Telechargement des donnees", "Downloading your data"],
+  "sync.readyHint": [
+    "Toutes vos donnees sont sur le telephone. Vous pouvez descendre sur le terrain sans reseau.",
+    "All your data is on the phone. You can go pitchside without a network.",
+  ],
+  "sync.notReadyHint": [
+    "Restez connecte jusqu'a la fin, sinon certaines donnees manqueront hors reseau.",
+    "Stay connected until this finishes, otherwise some data will be missing offline.",
+  ],
   "sync.offlineHint": [
     "Vos saisies sont conservees sur le telephone et partiront au retour du reseau.",
     "Your entries are kept on the phone and will be sent when the network returns.",

@@ -11,6 +11,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { TOUCH, radius, space, useTheme } from "../theme";
 import { fill, translate, type MessageKey } from "../i18n";
@@ -287,22 +288,40 @@ export function Empty({ message }: { message: string }) {
 /**
  * Bandeau d'etat de la synchronisation.
  *
- * Il est toujours visible en tete d'ecran. Sur le terrain, savoir si ce qu'on
- * vient de saisir est parti ou attend encore vaut mieux que n'importe quelle
- * autre information de l'ecran.
+ * Il repond a une seule question, celle qui compte avant de descendre sur un
+ * terrain : est ce que je peux couper le reseau maintenant sans rien perdre ?
+ *
+ * Tant que la premiere descente complete n'est pas finie, il le dit franchement
+ * et invite a rester connecte. Une fois finie, il affiche une coche verte, et
+ * c'est le signal d'y aller. Un simple « synchronise » ne repond pas a la
+ * question : il peut vouloir dire qu'une descente est en cours depuis trois
+ * secondes et qu'il manque la moitie des joueurs.
+ *
+ * Le moteur ne fixe la date de derniere synchronisation qu'apres avoir epuise
+ * le curseur, donc sa presence prouve que tout est arrive.
  */
 export function SyncBar() {
   const theme = useTheme();
   const t = useT();
-  const { online, syncStatus, pending, sync } = useSession();
+  const { online, syncStatus, pending, lastSync, sync } = useSession();
 
-  const [background, colour, label] = !online
-    ? [theme.warningSoft, theme.warning, t("sync.offline")]
+  const offlineReady = lastSync !== null;
+
+  const [background, colour, icon, label] = !online
+    ? [theme.warningSoft, theme.warning, "cloud-off-outline" as const, t("sync.offline")]
     : syncStatus === "syncing"
-      ? [theme.accentSoft, theme.onAccentSoft, t("sync.syncing")]
+      ? [theme.accentSoft, theme.onAccentSoft, "sync" as const, t("sync.syncing")]
       : syncStatus === "error"
-        ? [theme.dangerSoft, theme.danger, t("sync.failed")]
-        : [theme.successSoft, theme.success, t("sync.online")];
+        ? [theme.dangerSoft, theme.danger, "alert-circle-outline" as const, t("sync.failed")]
+        : offlineReady
+          ? [theme.successSoft, theme.success, "check-circle-outline" as const, t("sync.ready")]
+          : [theme.warningSoft, theme.warning, "cloud-download-outline" as const, t("sync.notReady")];
+
+  const hint = !online
+    ? t("sync.offlineHint")
+    : offlineReady
+      ? null
+      : t("sync.notReadyHint");
 
   return (
     <Pressable
@@ -310,21 +329,31 @@ export function SyncBar() {
       accessibilityRole="button"
       accessibilityLabel={`${label}. ${t("sync.now")}`}
       style={{
-        minHeight: 40,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: space.sm,
         backgroundColor: background,
         borderRadius: radius.md,
         paddingHorizontal: space.md,
+        paddingVertical: space.sm,
         marginBottom: space.lg,
       }}
     >
-      {syncStatus === "syncing" ? <ActivityIndicator size="small" color={colour} /> : null}
-      <Text style={{ fontSize: 13, fontWeight: "600", color: colour }}>{label}</Text>
-      {pending > 0 ? (
-        <Text style={{ fontSize: 13, color: colour }}>. {t("sync.pending", { count: pending })}</Text>
+      <View style={{ minHeight: 28, flexDirection: "row", alignItems: "center", gap: space.sm }}>
+        {syncStatus === "syncing" ? (
+          <ActivityIndicator size="small" color={colour} />
+        ) : (
+          <MaterialCommunityIcons name={icon} size={18} color={colour} />
+        )}
+        <Text style={{ flex: 1, fontSize: 13, fontWeight: "700", color: colour }}>{label}</Text>
+        {pending > 0 ? (
+          <Text style={{ fontSize: 13, fontWeight: "600", color: colour }}>
+            {t("sync.pending", { count: pending })}
+          </Text>
+        ) : null}
+      </View>
+
+      {hint ? (
+        <Text style={{ marginTop: 4, fontSize: 12, lineHeight: 17, color: colour, opacity: 0.9 }}>
+          {hint}
+        </Text>
       ) : null}
     </Pressable>
   );

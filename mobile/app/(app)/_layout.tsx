@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Text, type ColorValue } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { useT } from "../../src/components/ui";
 import { TOUCH, useTheme } from "../../src/theme";
@@ -12,28 +12,18 @@ import { TOUCH, useTheme } from "../../src/theme";
  * ou l'on va vraiment : ce qui se passe aujourd'hui, les equipes, et les
  * reglages.
  *
- * Chaque onglet porte une icone et une etiquette. Une barre d'onglets sans
- * texte oblige a apprendre des pictogrammes, ce qui se paie a chaque nouvel
- * utilisateur.
- */
-
-/**
- * Pictogrammes traces en caracteres geometriques.
+ * Les pictogrammes viennent de `@expo/vector-icons`, livre avec Expo. C'est une
+ * police d'icones, donc aucune vue supplementaire, aucun module natif a
+ * installer, et la couleur suit celle de l'onglet actif.
  *
- * Aucun emoji : leur rendu depend de la police du systeme, ils changent d'un
- * telephone a l'autre et ne suivent pas la couleur de l'onglet actif. Aucune
- * bibliotheque d'icones non plus, pour ne pas ajouter un module natif au seul
- * profit de trois symboles.
+ * La version precedente dessinait des caracteres unicode. Ils s'affichaient
+ * differemment d'un telephone a l'autre selon la police du systeme, et donnaient
+ * a la barre un aspect bricole. C'etait le bon reflexe pour eviter une
+ * dependance, mais la dependance etait deja la.
+ *
+ * Chaque onglet porte une icone et une etiquette. Une barre sans texte oblige a
+ * apprendre des pictogrammes, ce qui se paie a chaque nouvel utilisateur.
  */
-function Glyph({ shape, colour }: { shape: "pulse" | "squad" | "gear"; colour: ColorValue }) {
-  const symbol = shape === "pulse" ? "◗" : shape === "squad" ? "◍" : "⚙";
-  return (
-    <Text style={{ fontSize: 20, color: colour, lineHeight: 24 }} allowFontScaling={false}>
-      {symbol}
-    </Text>
-  );
-}
-
 export default function AppTabs() {
   const theme = useTheme();
   const t = useT();
@@ -48,7 +38,7 @@ export default function AppTabs() {
           backgroundColor: theme.panel,
           borderTopColor: theme.border,
           minHeight: TOUCH + 12,
-          paddingTop: 4,
+          paddingTop: 6,
         },
         tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
       }}
@@ -57,21 +47,39 @@ export default function AppTabs() {
         name="index"
         options={{
           title: t("nav.dashboard"),
-          tabBarIcon: ({ color }) => <Glyph shape="pulse" colour={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialCommunityIcons
+              name={focused ? "chart-line" : "chart-line-variant"}
+              size={24}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="teams"
         options={{
           title: t("nav.teams"),
-          tabBarIcon: ({ color }) => <Glyph shape="squad" colour={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialCommunityIcons
+              name={focused ? "account-group" : "account-group-outline"}
+              size={24}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: t("nav.settings"),
-          tabBarIcon: ({ color }) => <Glyph shape="gear" colour={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialCommunityIcons
+              name={focused ? "cog" : "cog-outline"}
+              size={24}
+              color={color}
+            />
+          ),
         }}
       />
     </Tabs>

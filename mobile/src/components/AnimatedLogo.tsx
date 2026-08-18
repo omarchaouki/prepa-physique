@@ -1,62 +1,71 @@
-import { useEffect, useRef } from "react";
-import { AccessibilityInfo, Animated, Easing, Platform, StyleSheet, View } from "react-native";
+import { useEffect } from "react";
+import { StyleSheet, View } from "react-native";
+import Animated, {
+  Easing,
+  type CSSAnimationProperties,
+  useAnimatedProps,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
+import Svg, { Path } from "react-native-svg";
 
 import { useTheme } from "../theme";
 
 /**
  * Le signe de la marque, qui se trace au lancement.
  *
- * La courbe de vitesse d'un sprint se dessine de gauche a droite, puis le point
- * de mesure apparait a son extremite. C'est le geste du chronometre : on lance,
- * la vitesse monte, on arrete.
+ * Le trace est celui du site : la ligne de pouls, meme geometrie, meme bleu.
+ * Une application et un site qui portent deux signes differents ne donnent pas
+ * l'impression de deux produits, mais d'un produit mal fini.
  *
- * Trois contraintes tenues ici :
+ * ---------------------------------------------------------------------------
+ * Comment le trace fonctionne
+ * ---------------------------------------------------------------------------
  *
- * 1. Aucune bibliotheque d'animation. `Animated` est integre a React Native, et
- *    `useNativeDriver` fait tourner le mouvement sur le fil de composition :
- *    l'animation reste fluide meme pendant l'ouverture de la base locale, qui
- *    occupe le fil principal au meme moment.
- * 2. `prefers-reduced-motion` est respecte. Un utilisateur qui a demande moins
- *    de mouvement au systeme voit le signe apparaitre en fondu, sans trace.
- * 3. L'animation ne retarde rien. Elle habille une attente qui existe de toute
- *    facon, elle ne la cree pas : l'ecran suivant s'affiche des qu'il est pret,
- *    meme si le trace n'est pas termine.
+ * Un seul `Path`, dont le pointille couvre exactement sa propre longueur. En
+ * deplacant l'origine du pointille de cette longueur jusqu'a zero, le trait
+ * apparait d'un bout a l'autre. C'est la technique classique du dessin de
+ * ligne, et elle ne coute qu'une seule vue native.
  *
- * Le trace se fait sans SVG, en revelant progressivement un masque au dessus de
- * la courbe. Cela evite d'ajouter react-native-svg pour une seule vue, et un
- * module natif de moins est un module natif qui ne cassera pas a la prochaine
- * montee de version.
+ * La version precedente empilait quarante cinq vues, une par point de la
+ * courbe. Elle fonctionnait, mais elle faisait porter au fil principal un
+ * travail que le fil de composition fait seul.
+ *
+ * `useAnimatedProps` avec Reanimated garde l'animation sur le fil de
+ * composition : elle reste fluide meme pendant l'ouverture de la base locale,
+ * qui occupe le fil principal au meme moment.
  */
 
-const SIZE = 128;
-/** Grille du logo, identique a celle de scripts/generate-assets.py. */
+/** Grille du logo, identique a scripts/generate-assets.py. */
 const GRID = 24;
 
-/** Points de la courbe, echantillonnes une fois pour toutes. */
-const CURVE = ((): Array<{ x: number; y: number }> => {
-  const bezier = (
-    p0: [number, number],
-    p1: [number, number],
-    p2: [number, number],
-    p3: [number, number],
-    steps: number,
-  ) => {
-    const points: Array<{ x: number; y: number }> = [];
-    for (let i = 0; i <= steps; i += 1) {
-      const t = i / steps;
-      const u = 1 - t;
-      points.push({
-        x: u ** 3 * p0[0] + 3 * u ** 2 * t * p1[0] + 3 * u * t ** 2 * p2[0] + t ** 3 * p3[0],
-        y: u ** 3 * p0[1] + 3 * u ** 2 * t * p1[1] + 3 * u * t ** 2 * p2[1] + t ** 3 * p3[1],
-      });
-    }
-    return points;
-  };
-  return bezier([4.4, 19.4], [6.2, 10.2], [13.6, 6.6], [19.3, 6.4], 44);
-})();
+/**
+ * Ligne de pouls, ecrite de gauche a droite pour que le trace suive le sens de
+ * lecture. Le generateur d'icones la definit dans l'autre sens, ce qui n'a pas
+ * d'importance pour une image fixe mais en a une ici.
+ */
+const PULSE = "M 2 12 L 6 12 L 9 3 L 15 21 L 18 12 L 22 12";
+
+/**
+ * Longueur du trace, en unites de grille.
+ *
+ * Calculee une fois ici plutot que lue par `getTotalLength` : cette methode
+ * n'existe pas de facon fiable sur toutes les implementations natives, et une
+ * longueur fausse laisse un morceau de trait visible avant le depart.
+ */
+const LENGTH = [
+  [2, 12, 6, 12],
+  [6, 12, 9, 3],
+  [9, 3, 15, 21],
+  [15, 21, 18, 12],
+  [18, 12, 22, 12],
+].reduce((total, [x1, y1, x2, y2]) => total + Math.hypot(x2 - x1, y2 - y1), 0);
+
+const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 export function AnimatedLogo({
-  size = SIZE,
+  size = 128,
   colour,
   onDone,
 }: {
@@ -66,132 +75,164 @@ export function AnimatedLogo({
 }) {
   const theme = useTheme();
   const ink = colour ?? theme.onAccent;
+  const reduced = useReducedMotion();
 
-  const progress = useRef(new Animated.Value(0)).current;
-  const dot = useRef(new Animated.Value(0)).current;
+  // Longueur du trace a l'echelle demandee : c'est la valeur qui doit couvrir
+  // exactement le pointille pour que le trait parte invisible.
+  const length = LENGTH * (size / GRID);
 
-  const unit = size / GRID;
-  const stroke = Math.max(2, size * 0.082);
+  // Fraction du trait deja visible, de 0 a 1.
+  const drawn = useSharedValue(reduced ? 1 : 0);
 
   useEffect(() => {
-    let cancelled = false;
+    if (reduced) {
+      // L'utilisateur a demande moins de mouvement au systeme : le signe
+      // apparait d'un coup, et la suite s'enchaine sans attendre.
+      drawn.value = 1;
+      onDone?.();
+      return;
+    }
 
-    void (async () => {
-      const reduced = await AccessibilityInfo.isReduceMotionEnabled().catch(() => false);
-      if (cancelled) return;
+    drawn.value = withTiming(
+      1,
+      // Sortie progressive : rapide au depart, puis ralentie. Un trace a
+      // vitesse constante donne l'impression d'une barre de progression.
+      { duration: 900, easing: Easing.out(Easing.cubic) },
+      (finished) => {
+        "worklet";
+        // Pas de `runOnJS` : il a disparu de Reanimated 4. Le rappel est
+        // declenche par un effet cote React plus bas, ce qui evite d'avoir a
+        // franchir la frontiere des fils pour une seule notification.
+        if (finished) drawn.value = 1;
+      },
+    );
+  }, [drawn, reduced, onDone]);
 
-      if (reduced) {
-        progress.setValue(1);
-        Animated.timing(dot, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }).start(() => onDone?.());
-        return;
-      }
+  // Fin de l'animation, annoncee depuis le fil principal. Un minuteur suffit :
+  // la duree est connue, et faire traverser un rappel depuis le worklet
+  // couterait plus cher que ce qu'il rapporte.
+  useEffect(() => {
+    if (reduced || !onDone) return;
+    const timer = setTimeout(onDone, 950);
+    return () => clearTimeout(timer);
+  }, [reduced, onDone]);
 
-      Animated.sequence([
-        Animated.timing(progress, {
-          toValue: 1,
-          duration: 620,
-          // Sortie progressive : la courbe se trace vite puis ralentit, comme
-          // la vitesse qu'elle represente.
-          easing: Easing.bezier(0.22, 1, 0.36, 1),
-          useNativeDriver: true,
-        }),
-        Animated.spring(dot, {
-          toValue: 1,
-          friction: 5,
-          tension: 140,
-          useNativeDriver: true,
-        }),
-      ]).start(({ finished }) => {
-        if (finished && !cancelled) onDone?.();
-      });
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [progress, dot, onDone]);
-
-  const last = CURVE[CURVE.length - 1];
+  const animatedProps = useAnimatedProps(() => ({
+    // Toute la conversion se fait ici, dans le rappel, comme le veut la regle :
+    // aucun adaptateur intermediaire.
+    strokeDashoffset: length * (1 - drawn.value),
+  }));
 
   return (
-    <View
-      style={{ width: size, height: size }}
-      accessibilityRole="image"
-      accessibilityLabel="Lamsaa"
-    >
-      {/* Axe du temps */}
-      <View
-        style={[
-          styles.baseline,
-          {
-            left: 3 * unit,
-            top: 20.2 * unit,
-            width: 18 * unit,
-            height: Math.max(1, stroke * 0.3),
-            borderRadius: stroke,
-            backgroundColor: ink,
-            opacity: 0.42,
-          },
-        ]}
-      />
+    <View style={{ width: size, height: size }} accessibilityRole="image" accessibilityLabel="Prepa Physique">
+      <Svg width={size} height={size} viewBox={`0 0 ${GRID} ${GRID}`}>
+        <AnimatedPath
+          d={PULSE}
+          stroke={ink}
+          strokeWidth={GRID * 0.093}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+          strokeDasharray={LENGTH}
+          animatedProps={animatedProps}
+        />
+      </Svg>
+    </View>
+  );
+}
 
-      {/*
-        La courbe est faite de disques. Chacun apparait quand la progression
-        depasse sa position, ce qui donne un trace continu de gauche a droite.
-        `useNativeDriver` n'anime que l'opacite et l'echelle, jamais la mise en
-        page : c'est ce qui garde le mouvement sur le fil de composition.
-      */}
-      {CURVE.map((point, index) => {
-        const at = index / (CURVE.length - 1);
-        const appear = progress.interpolate({
-          inputRange: [Math.max(0, at - 0.06), at, 1],
-          outputRange: [0, 1, 1],
-          extrapolate: "clamp",
-        });
-        return (
-          <Animated.View
-            key={index}
-            style={{
-              position: "absolute",
-              left: point.x * unit - stroke / 2,
-              top: point.y * unit - stroke / 2,
-              width: stroke,
-              height: stroke,
-              borderRadius: stroke / 2,
-              backgroundColor: ink,
-              opacity: appear,
-              transform: [{ scale: appear }],
-            }}
-          />
-        );
-      })}
+/**
+ * Ecran de lancement complet : le signe, le nom, le slogan.
+ *
+ * L'enchainement suit le sens de lecture. Le trait se dessine, le nom monte,
+ * le slogan suit, la maison d'edition ferme la marche. Chaque element attend
+ * que le precedent soit installe, ce qui donne une phrase plutot qu'un
+ * empilement.
+ *
+ * Les textes utilisent les animations declaratives de Reanimated, pas des
+ * valeurs partagees. La regle est simple : une valeur partagee se justifie
+ * quand l'animation suit un geste, lit une mesure ou calcule a chaque image.
+ * Ici il n'y a qu'une suite d'images connue d'avance, donc rien qui merite un
+ * worklet ni un passage entre les fils.
+ */
 
-      {/* Point de mesure : l'anneau du chronometre qui s'arrete. */}
-      <Animated.View
-        style={{
-          position: "absolute",
-          left: last.x * unit - stroke * 1.3,
-          top: last.y * unit - stroke * 1.3,
-          width: stroke * 2.6,
-          height: stroke * 2.6,
-          borderRadius: stroke * 1.3,
-          borderWidth: stroke * 0.78,
-          borderColor: ink,
-          opacity: dot,
-          transform: [{ scale: dot }],
-        }}
-      />
+/** Entree commune aux trois textes : une montee courte avec un fondu. */
+const RISE = {
+  from: { opacity: 0, transform: [{ translateY: 12 }] },
+  to: { opacity: 1, transform: [{ translateY: 0 }] },
+} as const;
+
+export function LaunchMark({
+  name,
+  tagline,
+  publisher,
+  onDone,
+}: {
+  name: string;
+  tagline: string;
+  publisher: string;
+  onDone?: () => void;
+}) {
+  const theme = useTheme();
+  const reduced = useReducedMotion();
+
+  // Sans mouvement, les durees et les delais tombent a zero plutot que
+  // l'animation d'etre retiree : la fonction renvoie toujours la meme forme,
+  // ce qui evite une union de types dans le tableau de styles et garde une
+  // seule branche de code a relire.
+  const entrance = (delay: number): CSSAnimationProperties => ({
+    animationName: RISE,
+    animationDuration: reduced ? "0ms" : "420ms",
+    animationDelay: reduced ? "0ms" : `${delay}ms`,
+    animationTimingFunction: "ease-out",
+    animationFillMode: "both",
+  });
+
+  return (
+    <View style={styles.wrap}>
+      <AnimatedLogo size={112} onDone={onDone} />
+
+      <Animated.Text
+        accessibilityRole="header"
+        style={[styles.name, { color: theme.onAccent }, entrance(620)]}
+      >
+        {name}
+      </Animated.Text>
+
+      <Animated.Text style={[styles.tagline, { color: theme.onAccent }, entrance(820)]}>
+        {tagline}
+      </Animated.Text>
+
+      <Animated.Text style={[styles.publisher, { color: theme.onAccent }, entrance(1020)]}>
+        {publisher}
+      </Animated.Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  baseline: {
-    position: "absolute",
-    ...Platform.select({ default: {} }),
+  wrap: { alignItems: "center", justifyContent: "center" },
+  name: {
+    marginTop: 20,
+    fontSize: 30,
+    fontWeight: "800",
+    letterSpacing: -0.8,
+    textAlign: "center",
+  },
+  tagline: {
+    marginTop: 8,
+    fontSize: 15,
+    fontWeight: "500",
+    opacity: 0.9,
+    textAlign: "center",
+  },
+  publisher: {
+    marginTop: 28,
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 2,
+    textTransform: "uppercase",
+    opacity: 0.7,
+    textAlign: "center",
   },
 });

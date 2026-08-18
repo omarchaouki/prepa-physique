@@ -73,26 +73,47 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={{ alignItems: "center", marginBottom: space.xxl }}>
+            {/* Le signe se trace une fois, a l'ouverture de l'ecran. Il ne
+                rejoue pas a l'apparition du clavier : celui ci ne demonte pas
+                la vue, il la fait seulement remonter. */}
             <View
               style={{
-                width: 88,
-                height: 88,
-                borderRadius: 22,
+                width: 84,
+                height: 84,
+                borderRadius: 21,
                 backgroundColor: theme.accent,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <AnimatedLogo size={62} />
+              <AnimatedLogo size={58} />
             </View>
             <Text
               accessibilityRole="header"
-              style={{ marginTop: space.lg, fontSize: 28, fontWeight: "700", color: theme.textPrimary, letterSpacing: -0.6 }}
+              style={{
+                marginTop: space.lg,
+                fontSize: 27,
+                fontWeight: "800",
+                color: theme.textPrimary,
+                letterSpacing: -0.7,
+              }}
             >
               {t("app.name")}
             </Text>
-            <Text style={{ marginTop: 4, fontSize: 14, color: theme.textMuted }}>
+            <Text style={{ marginTop: 5, fontSize: 15, color: theme.textSecondary }}>
               {t("app.tagline")}
+            </Text>
+            <Text
+              style={{
+                marginTop: space.md,
+                fontSize: 11,
+                fontWeight: "600",
+                letterSpacing: 1.6,
+                textTransform: "uppercase",
+                color: theme.textMuted,
+              }}
+            >
+              {t("app.publisher")}
             </Text>
           </View>
 

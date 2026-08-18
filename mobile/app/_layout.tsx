@@ -6,7 +6,8 @@ import * as SplashScreen from "expo-splash-screen";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { SessionProvider, useSession } from "../src/state/session";
-import { AnimatedLogo } from "../src/components/AnimatedLogo";
+import { LaunchMark } from "../src/components/AnimatedLogo";
+import { translate } from "../src/i18n";
 import { useTheme } from "../src/theme";
 
 /**
@@ -28,7 +29,7 @@ import { useTheme } from "../src/theme";
 void SplashScreen.preventAutoHideAsync();
 
 function Gate() {
-  const { ready, user } = useSession();
+  const { ready, user, locale } = useSession();
   const theme = useTheme();
   const router = useRouter();
   const segments = useSegments();
@@ -61,7 +62,12 @@ function Gate() {
     return (
       <View style={{ flex: 1, backgroundColor: theme.accent, alignItems: "center", justifyContent: "center" }}>
         <StatusBar style="light" />
-        <AnimatedLogo size={140} onDone={() => setIntroDone(true)} />
+        <LaunchMark
+          name={translate("app.name", locale)}
+          tagline={translate("app.tagline", locale)}
+          publisher={translate("app.publisher", locale)}
+          onDone={() => setIntroDone(true)}
+        />
       </View>
     );
   }
