@@ -138,11 +138,22 @@ than that. V8 refuses to grow past its own limit even when swap is free, so the
 limit has to be raised explicitly:
 
 ```bash
-NODE_OPTIONS="--max-old-space-size=1536" npm run build
+SKIP_BUILD_CHECKS=1 NODE_OPTIONS="--max-old-space-size=1536" npm run build
 ```
 
-Use this form for every build on this instance. It is slower, because the swap
-is doing real work, but it completes.
+**Both variables are needed on this instance.** They do different things:
+
+- `NODE_OPTIONS` lets V8 grow past the ceiling it picks from detected RAM.
+- `SKIP_BUILD_CHECKS=1` turns off type checking and linting during the build,
+  and drops Next.js to a single build worker instead of one per core.
+
+Type checking is the phase that dies, and it is redundant here: the code
+arrived by `git pull`, so it is exactly the code already checked on the
+development machine. Next.js prints `Skipping validation of types` when the
+variable is active, which is how you confirm it was picked up.
+
+The rule that comes with it is not negotiable: **`npm run typecheck` must pass
+before every `git push`**. Nothing checks types on the server any more.
 
 ---
 
@@ -363,7 +374,7 @@ Deploy a new version, after pushing to GitHub from your PC:
 cd ~/prepa-physique
 git pull
 npm ci
-NODE_OPTIONS="--max-old-space-size=1536" npm run build
+SKIP_BUILD_CHECKS=1 NODE_OPTIONS="--max-old-space-size=1536" npm run build
 pm2 restart prepa-physique
 ```
 
@@ -418,7 +429,8 @@ awake, a demo nobody visits won't.
 | Symptom | Cause | Fix |
 |---|---|---|
 | `npm run build` killed, no clear error | Kernel OOM killer | Swap from step 3; `free -h` to confirm it's active |
-| `FATAL ERROR: ... JavaScript heap out of memory` | V8's own heap ceiling, not the kernel | `NODE_OPTIONS="--max-old-space-size=1536" npm run build`. Swap alone does not fix this |
+| `FATAL ERROR: ... JavaScript heap out of memory` | V8's own heap ceiling, not the kernel | Add `NODE_OPTIONS="--max-old-space-size=1536"`. Swap alone does not fix this |
+| `Static worker exited ... SIGABRT` | Parallel build workers, each holding its own copy of the module graph | Add `SKIP_BUILD_CHECKS=1`, which also drops to a single worker |
 | Build succeeds but `prisma generate` step complains about missing deps | `NODE_ENV=production` was exported before `npm ci` | `unset NODE_ENV`, re-run `npm ci` |
 | `P1001: Can't reach database server` | Wrong host, or `db.<ref>.supabase.co` used | Both URLs must go through `...pooler.supabase.com`, the direct host is IPv6-only |
 | `password authentication failed` | `@` or `$` not URL-encoded | `%40` and `%24` in the URL |
