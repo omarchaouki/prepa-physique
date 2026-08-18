@@ -23,9 +23,14 @@
       "predictiveBackGestureEnabled": true,
       "permissions": [
         "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE"
       ],
       "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.RECORD_AUDIO",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE"
@@ -61,9 +66,17 @@
     },
     "extra": {
       "apiBaseUrl": "https://lamsaa.ma",
+      "router": {},
       "eas": {
-        "projectId": "a-renseigner-par-eas-init"
+        "projectId": "7b1a5d76-78fd-427d-a8ba-e47bb76d6b58"
       }
+    },
+    "owner": "codecanyon",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/7b1a5d76-78fd-427d-a8ba-e47bb76d6b58"
     }
   }
 }
