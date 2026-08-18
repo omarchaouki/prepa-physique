@@ -52,7 +52,13 @@ cherche donc un paquet inexistant et repond `could not determine executable to
 run`. La forme `npx eas-cli@latest login` fonctionne aussi, mais retelecharge
 l'outil a chaque appel.
 
-`eas init` inscrit l'identifiant du projet dans `app.json`, a la place de `a-renseigner-par-eas-init`.
+`eas init` inscrit l'identifiant du projet dans `app.json`, sous
+`extra.eas.projectId`.
+
+**Cette cle ne doit pas exister avant.** EAS lit sa seule presence comme
+« projet deja lie » : il refuse alors de le relier, puis echoue sur
+`Invalid UUID appId`. Si cela arrive, supprimez le bloc `extra.eas` de
+`app.json` et relancez `eas init`.
 
 **La cle de signature.** Laissez EAS la creer et la conserver : `eas build` la propose au premier lancement, repondez oui. C'est le choix sur. Une cle perdue interdit definitivement toute mise a jour de l'application, et la seule issue est de republier sous un autre identifiant en perdant les installations et les avis. Si vous preferez la garder vous meme, exportez la avec `eas credentials` et rangez la ailleurs que sur cette machine.
 
