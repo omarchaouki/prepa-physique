@@ -1,21 +1,46 @@
 "use client";
 
+import { useTransition } from "react";
 import { LogOut, Undo2 } from "lucide-react";
 import { logoutAction, stopImpersonationAction } from "@/app/actions/auth";
+import { useOffline } from "@/lib/offline/provider";
+import { clearOnLogout } from "@/lib/offline/store";
 
+/**
+ * Deconnexion.
+ *
+ * Avant de partir, on tente d'envoyer ce qui reste en file puis on efface les
+ * traces locales : les pages en cache et les brouillons contiennent des mesures
+ * de joueurs. Voir `clearOnLogout` pour ce qui est volontairement conserve.
+ */
 export function LogoutButton({ label }: { label: string }) {
+  const { flush } = useOffline();
+  const [pending, startTransition] = useTransition();
+
+  const signOut = () => {
+    startTransition(async () => {
+      try {
+        await flush();
+      } catch {
+        // Une file qui ne part pas ne doit pas empecher de se deconnecter.
+      }
+      await clearOnLogout();
+      await logoutAction();
+    });
+  };
+
   return (
-    <form action={logoutAction}>
-      <button
-        type="submit"
-        className="grid place-items-center size-7 rounded-md cursor-pointer transition-colors"
-        style={{ color: "var(--text-muted)" }}
-        aria-label={label}
-        title={label}
-      >
-        <LogOut size={15} aria-hidden="true" />
-      </button>
-    </form>
+    <button
+      type="button"
+      onClick={signOut}
+      disabled={pending}
+      className="grid place-items-center size-7 rounded-md cursor-pointer transition-colors disabled:opacity-50"
+      style={{ color: "var(--text-muted)" }}
+      aria-label={label}
+      title={label}
+    >
+      <LogOut size={15} aria-hidden="true" />
+    </button>
   );
 }
 

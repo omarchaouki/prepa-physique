@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Loader2, UserPlus } from "lucide-react";
+import { Info, Loader2, UserPlus } from "lucide-react";
 
 import { createPlayerAction, updatePlayerAction } from "@/app/actions/squad";
 import type { ActionState } from "@/app/actions/auth";
@@ -15,6 +15,7 @@ import {
   type Position,
 } from "@/lib/constants";
 import { useLocale, useT } from "@/lib/i18n/client";
+import { FormProgress } from "@/components/shell/form-progress";
 import type { PlayerFormValues } from "./player-values";
 
 
@@ -44,6 +45,11 @@ function SubmitButton({ label }: { label: string }) {
  * En mode ajout, le formulaire se vide et redonne le focus au nom des qu'un
  * joueur est enregistre : on peut saisir un effectif entier sans quitter la
  * page ni toucher la souris.
+ *
+ * Le sexe n'est pas saisi : il est celui de l'equipe d'accueil. Le formulaire se
+ * contente de l'afficher, et il suit le menu des equipes en cas de transfert,
+ * pour que la consequence d'un changement d'equipe soit visible avant
+ * d'enregistrer.
  */
 export function PlayerForm({
   mode,
@@ -53,7 +59,7 @@ export function PlayerForm({
 }: {
   mode: "create" | "edit";
   values: PlayerFormValues;
-  teams: Array<{ id: string; name: string }>;
+  teams: Array<{ id: string; name: string; sex: string }>;
   extra?: React.ReactNode;
 }) {
   const t = useT();
@@ -64,16 +70,22 @@ export function PlayerForm({
   );
   const formRef = useRef<HTMLFormElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
+  const [teamId, setTeamId] = useState(values.teamId);
+
+  const selectedTeam = teams.find((team) => team.id === teamId);
+  const derivedSex = selectedTeam?.sex === "F" ? "F" : "M";
 
   useEffect(() => {
     if (mode === "create" && state.success) {
       formRef.current?.reset();
+      setTeamId(values.teamId);
       firstFieldRef.current?.focus();
     }
-  }, [mode, state.success]);
+  }, [mode, state.success, values.teamId]);
 
   return (
     <form action={formAction} ref={formRef} className="space-y-3">
+      <FormProgress />
       {values.id ? <input type="hidden" name="playerId" value={values.id} /> : null}
 
       {state.error ? (
@@ -240,15 +252,28 @@ export function PlayerForm({
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid sm:grid-cols-2 gap-3">
         <div>
-          <label className="label" htmlFor="sex">
-            {t("admin.sex")}
+          <label className="label" htmlFor="teamId">
+            {t("manage.transferTeam")} *
           </label>
-          <select id="sex" name="sex" defaultValue={values.sex} className="field cursor-pointer">
-            <option value="M">{t("teams.masculine")}</option>
-            <option value="F">{t("teams.feminine")}</option>
+          <select
+            id="teamId"
+            name="teamId"
+            value={teamId}
+            onChange={(event) => setTeamId(event.target.value)}
+            className="field cursor-pointer"
+            aria-describedby="team-hint"
+          >
+            {teams.map((team) => (
+              <option key={team.id} value={team.id}>
+                {team.name}
+              </option>
+            ))}
           </select>
+          <p id="team-hint" className="text-[0.75rem] mt-1" style={{ color: "var(--text-muted)" }}>
+            {mode === "create" ? t("manage.playerTeamHint") : t("manage.sexFromTeam")}
+          </p>
         </div>
         <div>
           <label className="label" htmlFor="status">
@@ -267,24 +292,22 @@ export function PlayerForm({
             ))}
           </select>
         </div>
-        <div>
-          <label className="label" htmlFor="teamId">
-            {t("manage.transferTeam")}
-          </label>
-          <select
-            id="teamId"
-            name="teamId"
-            defaultValue={values.teamId}
-            className="field cursor-pointer"
-          >
-            {teams.map((team) => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
+
+      {/* Consequence du choix ci dessus, affichee avant l'enregistrement. */}
+      <p
+        className="flex items-center gap-1.5 text-[0.8125rem] panel-sunken px-2.5 py-2"
+        style={{ color: "var(--text-secondary)" }}
+      >
+        <Info size={14} style={{ color: "var(--text-muted)" }} aria-hidden="true" />
+        <span>
+          {t("admin.sex")} :{" "}
+          <span className="font-medium" style={{ color: "var(--text-primary)" }}>
+            {derivedSex === "F" ? t("teams.feminine") : t("teams.masculine")}
+          </span>
+          {selectedTeam ? ` · ${selectedTeam.name}` : ""}
+        </span>
+      </p>
 
       <details className="panel-sunken p-3">
         <summary className="cursor-pointer text-[0.8125rem] font-medium">

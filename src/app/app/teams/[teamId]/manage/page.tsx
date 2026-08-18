@@ -59,7 +59,8 @@ export default async function ManageTeamPage({
         : user.role === "CLUB_ADMIN"
           ? { organizationId: user.organizationId ?? "" }
           : { members: { some: { userId: user.id, accessLevel: "MANAGE" } } },
-    select: { id: true, name: true },
+    // Voir PlayerForm : le sexe affiche suit l'equipe choisie.
+    select: { id: true, name: true, sex: true },
     orderBy: { name: "asc" },
   });
 

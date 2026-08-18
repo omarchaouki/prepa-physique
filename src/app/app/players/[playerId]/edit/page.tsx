@@ -37,7 +37,9 @@ export default async function EditPlayerPage({
         : user.role === "CLUB_ADMIN"
           ? { organizationId: user.organizationId ?? "" }
           : { members: { some: { userId: user.id, accessLevel: "MANAGE" } } },
-    select: { id: true, name: true },
+    // Le sexe accompagne chaque equipe : le formulaire affiche celui qui
+    // s'appliquera au joueur, y compris apres un changement d'equipe.
+    select: { id: true, name: true, sex: true },
     orderBy: { name: "asc" },
   });
 
@@ -70,7 +72,6 @@ export default async function EditPlayerPage({
               firstName: player.firstName,
               lastName: player.lastName,
               birthDate: formatDateInput(player.birthDate),
-              sex: player.sex,
               position: player.position,
               secondaryPosition: player.secondaryPosition ?? "",
               dominantFoot: player.dominantFoot,

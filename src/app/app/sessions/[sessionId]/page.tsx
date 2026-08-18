@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronLeft, ClipboardList, Lock } from "lucide-react";
+import { ChevronLeft, ClipboardList, Lock, UserPlus } from "lucide-react";
 
 import { canAccessTeam, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -129,9 +129,19 @@ title={t("sessions.entry")}
           icon={<ClipboardList size={16} />}
         />
         {players.length === 0 ? (
-          <p className="text-sm py-8 text-center" style={{ color: "var(--text-muted)" }}>
-            {t("sessions.noPlayersBody")}
-          </p>
+          // Une passation sans effectif n'a rien a saisir : on renvoie la ou les
+          // joueurs s'ajoutent, dans l'equipe de cette passation precisement.
+          <div className="py-8 text-center">
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+              {t("sessions.noPlayersBody")}
+            </p>
+            {canEdit ? (
+              <Link href={`/app/teams/${teamId}/manage`} className="btn btn-primary mt-3">
+                <UserPlus size={15} aria-hidden="true" />
+                {t("manage.addPlayer")}
+              </Link>
+            ) : null}
+          </div>
         ) : (
           <SessionTabs
             sessionId={sessionId}

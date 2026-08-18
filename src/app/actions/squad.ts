@@ -47,6 +47,13 @@ const forbidden = async (): Promise<ActionState> => {
 // Joueurs
 // ---------------------------------------------------------------------------
 
+/**
+ * Le sexe ne figure pas dans ce schema : il n'est pas saisi mais derive de
+ * l'equipe d'accueil. Une equipe masculine ne peut donc pas recevoir de joueuse,
+ * et un transfert vers une equipe feminine reajuste le joueur. C'est aussi ce
+ * qui garantit que les percentiles sont lus dans la bonne population de
+ * reference, puisque `compareToNorm` s'appuie sur ce champ.
+ */
 const playerSchema = z.object({
   teamId: z.string().min(1),
   firstName: z.string().trim().min(1, "firstName"),
@@ -55,7 +62,6 @@ const playerSchema = z.object({
   position: z.enum(POSITIONS),
   secondaryPosition: z.string().optional(),
   dominantFoot: z.enum(["R", "L", "B"]),
-  sex: z.enum(["M", "F"]),
   jerseyNumber: z.string().optional(),
   heightCm: z.string().optional(),
   weightKg: z.string().optional(),
@@ -80,7 +86,6 @@ const readPlayerForm = (formData: FormData) =>
     position: String(formData.get("position") ?? "CM"),
     secondaryPosition: String(formData.get("secondaryPosition") ?? ""),
     dominantFoot: String(formData.get("dominantFoot") ?? "R"),
-    sex: String(formData.get("sex") ?? "M"),
     jerseyNumber: String(formData.get("jerseyNumber") ?? ""),
     heightCm: String(formData.get("heightCm") ?? ""),
     weightKg: String(formData.get("weightKg") ?? ""),
@@ -108,7 +113,12 @@ export async function createPlayerAction(
   // Le forfait du club plafonne le nombre de joueurs, toutes equipes confondues.
   const team = await prisma.team.findUnique({
     where: { id: parsed.data.teamId },
-    select: { organizationId: true, organization: { select: { maxPlayers: true, plan: true } } },
+    select: {
+      organizationId: true,
+      name: true,
+      sex: true,
+      organization: { select: { maxPlayers: true, plan: true } },
+    },
   });
   if (!team) return { error: t("manage.teamNotFound") };
 
@@ -130,7 +140,8 @@ export async function createPlayerAction(
       position: parsed.data.position,
       secondaryPosition: parsed.data.secondaryPosition || null,
       dominantFoot: parsed.data.dominantFoot,
-      sex: parsed.data.sex,
+      // Impose par l'equipe, jamais par le formulaire.
+      sex: team.sex,
       jerseyNumber: optionalNumber(parsed.data.jerseyNumber),
       heightCm: optionalNumber(parsed.data.heightCm),
       weightKg: optionalNumber(parsed.data.weightKg),
@@ -151,11 +162,15 @@ export async function createPlayerAction(
     meta: { name: `${player.firstName} ${player.lastName}`, teamId: parsed.data.teamId },
   });
 
-  revalidatePath(`/app/teams/${parsed.data.teamId}`);
-  revalidatePath(`/app/teams/${parsed.data.teamId}/manage`);
-  revalidatePath("/app/players");
+  // Un joueur ajoute change l'effectif de l'equipe, la liste des joueurs, mais
+  // aussi la grille de saisie de chaque passation deja ouverte pour cette
+  // equipe. Invalider toute la zone /app evite qu'un ecran deja visite continue
+  // d'afficher un effectif incomplet.
+  revalidatePath("/app", "layout");
 
-  return { success: `${player.firstName} ${player.lastName} ${t("manage.playerAdded")}` };
+  return {
+    success: `${player.firstName} ${player.lastName} ${t("manage.playerAddedTo")} ${team.name}.`,
+  };
 }
 
 export async function updatePlayerAction(
@@ -182,6 +197,13 @@ export async function updatePlayerAction(
     return forbidden();
   }
 
+  // Equipe d'accueil : c'est elle qui fixe le sexe, y compris lors d'un transfert.
+  const target = await prisma.team.findUnique({
+    where: { id: parsed.data.teamId },
+    select: { sex: true },
+  });
+  if (!target) return { error: t("manage.teamNotFound") };
+
   const player = await prisma.player.update({
     where: { id: playerId },
     data: {
@@ -192,7 +214,7 @@ export async function updatePlayerAction(
       position: parsed.data.position,
       secondaryPosition: parsed.data.secondaryPosition || null,
       dominantFoot: parsed.data.dominantFoot,
-      sex: parsed.data.sex,
+      sex: target.sex,
       jerseyNumber: optionalNumber(parsed.data.jerseyNumber),
       heightCm: optionalNumber(parsed.data.heightCm),
       weightKg: optionalNumber(parsed.data.weightKg),
@@ -213,10 +235,9 @@ export async function updatePlayerAction(
     meta: { name: `${player.firstName} ${player.lastName}` },
   });
 
-  revalidatePath(`/app/players/${playerId}`);
-  revalidatePath(`/app/teams/${existing.teamId}`);
-  revalidatePath(`/app/teams/${existing.teamId}/manage`);
-  revalidatePath("/app/players");
+  // Voir createPlayerAction : un transfert deplace le joueur d'une grille de
+  // saisie a une autre, donc toute la zone /app est concernee.
+  revalidatePath("/app", "layout");
 
   return { success: t("manage.playerSaved") };
 }
@@ -249,7 +270,7 @@ export async function deletePlayerAction(playerId: string) {
     meta: { name: `${player.firstName} ${player.lastName}` },
   });
 
-  revalidatePath(`/app/teams/${player.teamId}/manage`);
+  revalidatePath("/app", "layout");
   redirect(`/app/teams/${player.teamId}/manage`);
 }
 
@@ -363,6 +384,15 @@ export async function updateTeamAction(
     },
   });
 
+  // L'equipe fixe le sexe de son effectif. Realigner ici couvre deux cas : le
+  // passage d'une equipe de masculine a feminine, et les joueurs saisis avant
+  // que la regle existe. Enregistrer les reglages de l'equipe suffit donc a
+  // remettre un effectif herite en coherence.
+  const realigned = await prisma.player.updateMany({
+    where: { teamId, sex: { not: parsed.data.sex } },
+    data: { sex: parsed.data.sex },
+  });
+
   await logAudit({
     userId: user.id,
     actorEmail: user.email,
@@ -370,14 +400,17 @@ export async function updateTeamAction(
     action: "UPDATE",
     entity: "Team",
     entityId: team.id,
-    meta: { name: team.name, category: team.category },
+    meta: { name: team.name, category: team.category, realignedPlayers: realigned.count },
   });
 
-  revalidatePath(`/app/teams/${teamId}`);
-  revalidatePath(`/app/teams/${teamId}/manage`);
-  revalidatePath("/app/teams");
+  revalidatePath("/app", "layout");
 
-  return { success: t("manage.teamSaved") };
+  return {
+    success:
+      realigned.count > 0
+        ? `${t("manage.teamSaved")} ${realigned.count} ${t("manage.playersRealigned")}`
+        : t("manage.teamSaved"),
+  };
 }
 
 export async function toggleTeamActiveAction(teamId: string) {

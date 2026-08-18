@@ -8,6 +8,8 @@ import type { Translator } from "@/lib/i18n/dictionary";
 import { Sidebar, type NavSection } from "./sidebar";
 import { LogoutButton, StopImpersonationBar } from "./logout-button";
 import { LanguageSwitcher } from "./language-switcher";
+import { OfflineIndicator } from "./offline-indicator";
+import { OfflineProvider } from "@/lib/offline/provider";
 
 export const coachNavigation = (user: CurrentUser, t: Translator): NavSection[] => {
   const sections: NavSection[] = [
@@ -85,6 +87,10 @@ export async function AppShell({
 
   return (
     <LocaleProvider locale={locale}>
+      {/* L'etat reseau et la file d'attente enveloppent toute la zone connectee :
+          une saisie commencee sur une page doit continuer de partir apres une
+          navigation. */}
+      <OfflineProvider>
       {/* Empile la barre mobile au dessus du contenu, puis passe en deux colonnes
           a partir de la taille ou la colonne laterale est affichee. */}
       <div className="min-h-dvh lg:flex">
@@ -113,7 +119,9 @@ export async function AppShell({
             {children}
           </main>
         </div>
+        <OfflineIndicator />
       </div>
+      </OfflineProvider>
     </LocaleProvider>
   );
 }

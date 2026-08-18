@@ -82,6 +82,16 @@ export interface SaveResultsPayload {
   testKey: string;
   /** Une entree par joueur, avec les valeurs brutes du formulaire. */
   entries: Array<{ playerId: string; values: Record<string, string> }>;
+  /**
+   * Enregistrement automatique : on saute la revalidation des chemins.
+   *
+   * Sans cela, chaque pause de frappe declencherait un nouveau rendu serveur de
+   * la passation en cours, avec ses requetes d'effectif et de resultats. Toutes
+   * les pages de l'application etant en rendu dynamique, elles se rechargent de
+   * toute facon a la prochaine navigation : rien n'est perdu, seule la
+   * revalidation immediate est reportee a l'enregistrement explicite.
+   */
+  silent?: boolean;
 }
 
 export interface SaveResultsResponse {
@@ -272,8 +282,10 @@ export async function saveResultsAction(payload: SaveResultsPayload): Promise<Sa
     meta: { testKey: payload.testKey, saved, skipped },
   });
 
-  revalidatePath(`/app/sessions/${session.id}`);
-  revalidatePath(`/app/teams/${session.teamId}`);
+  if (!payload.silent) {
+    revalidatePath(`/app/sessions/${session.id}`);
+    revalidatePath(`/app/teams/${session.teamId}`);
+  }
 
   return {
     ok: true,

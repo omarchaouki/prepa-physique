@@ -52,11 +52,27 @@ const config: CapacitorConfig = {
 
   plugins: {
     SplashScreen: {
-      launchShowDuration: 900,
+      /*
+       * L'interface vient du serveur : le premier rendu peut demander deux a
+       * trois secondes sur un reseau de terrain. L'image de demarrage est donc
+       * retiree par l'application elle meme, des la premiere peinture, via
+       * src/components/shell/splash-gate.tsx.
+       *
+       * launchAutoHide reste a true, et launchShowDuration sert de filet : si le
+       * serveur ne repond pas, l'image se retire au bout de trois secondes et
+       * laisse voir l'ecran hors ligne. Avec launchAutoHide a false, une panne de
+       * serveur figerait le telephone sur le logo, sans aucune issue.
+       */
+      launchShowDuration: 3000,
       launchAutoHide: true,
+      launchFadeOutDuration: 250,
       backgroundColor: "#1E40AF",
       androidScaleType: "CENTER_CROP",
-      showSpinner: false,
+      // Le logo seul ne dit pas si quelque chose se passe : le rouet fait
+      // l'attente, et c'est lui qui manquait au demarrage.
+      showSpinner: true,
+      androidSpinnerStyle: "large",
+      spinnerColor: "#FFFFFF",
       splashFullScreen: false,
       splashImmersive: false,
     },

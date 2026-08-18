@@ -40,7 +40,10 @@
   --surface-hover: #f1f5f9;
   --text-primary: #0f172a;
   --text-secondary: #475569;
-  --text-muted: #64748b;
+  /* #64748b donnait 4,47 pour 1 sur le fond de page, soit trois centiemes sous
+     le seuil AA. Assombri juste assez pour passer sur les trois surfaces
+     claires : page 4,88, panneau 5,19, creux 4,62. */
+  --text-muted: #5f6e83;
   --border-subtle: #e2e8f0;
   --border-strong: #cbd5e1;
   --accent: #1e40af;
@@ -254,6 +257,22 @@ body {
   filter: brightness(0.92);
 }
 
+/*
+   Bouton de la page d'accueil : 2.75rem de haut, soit les 44 px de cible
+   tactile recommandes. La densite du tableau de bord n'a pas cours ici, ou
+   chaque bouton est un appel a l'action lu de loin.
+*/
+.btn-lg {
+  min-height: 2.75rem;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.9375rem;
+}
+
+/* Compense la barre de navigation collante lors d'un saut par ancre. */
+.anchor-offset {
+  scroll-margin-top: 5rem;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -361,10 +380,14 @@ body {
   position: fixed;
   top: 0;
   left: 0;
-  height: 2px;
+  height: 3px;
   z-index: 2000;
-  background: var(--accent);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    color-mix(in srgb, var(--accent) 55%, #ffffff) 100%
+  );
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent);
   transition: width 200ms ease-out, opacity 250ms ease-out;
   pointer-events: none;
 }
@@ -383,5 +406,126 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+
+/* ---------------------------------------------------------------------------
+   Page publique : typographie d'affichage et animations
+
+   Aucune bibliotheque d'animation. Le mouvement au defilement repose sur les
+   animations pilotees par le defilement natif du navigateur : elles tournent
+   sur le fil de composition, donc sans jamais bloquer le rendu, et elles ne
+   coutent pas une ligne de script.
+
+   Les navigateurs qui ne les connaissent pas encore affichent simplement le
+   contenu, immobile et complet. Rien n'est cache par defaut : une animation
+   ratee ne doit jamais faire disparaitre un paragraphe.
+--------------------------------------------------------------------------- */
+
+.display {
+  font-family: var(--font-display), var(--font-fira-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.94;
+  text-wrap: balance;
+}
+
+.display-sm {
+  font-family: var(--font-display), var(--font-fira-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+/* Filet fin, utilise a la place des cadres de carte. */
+.rule {
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Lien de navigation : le trait se deploie depuis la gauche. */
+.link-quiet {
+  position: relative;
+  color: var(--text-secondary);
+  transition: color 180ms ease-out;
+}
+
+.link-quiet::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  height: 1px;
+  width: 100%;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 220ms ease-out;
+}
+
+.link-quiet:hover {
+  color: var(--text-primary);
+}
+
+.link-quiet:hover::after {
+  transform: scaleX(1);
+}
+
+/* Ligne de tableau editorial : le fond se teinte au survol, sans cadre. */
+.row-quiet {
+  transition: background-color 180ms ease-out, padding-left 180ms ease-out;
+}
+
+@media (hover: hover) {
+  .row-quiet:hover {
+    background: var(--surface-hover);
+    padding-left: 0.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Entree a l'ouverture, pour le premier ecran uniquement. */
+  .rise {
+    animation: rise 620ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: var(--d, 0ms);
+  }
+
+  @supports (animation-timeline: view()) {
+    /* Apparition au defilement pour tout le reste de la page. */
+    .reveal {
+      animation: rise linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 22%;
+    }
+
+    /* Trait de section qui se trace quand la section arrive. */
+    .rule-draw {
+      transform-origin: left;
+      animation: draw linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 20%;
+    }
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
   }
 }

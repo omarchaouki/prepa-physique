@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
-import { AlertTriangle, Check, Info, Loader2, Save } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { AlertTriangle, Check, CloudOff, Info, Loader2, Save } from "lucide-react";
 
 import { saveResultsAction, type SaveResultsResponse } from "@/app/actions/tests";
 import type { TestSpec } from "@/lib/sports-science/types";
 import { Alert, Badge } from "@/components/ui/primitives";
 import { usePick, useT } from "@/lib/i18n/client";
+import { useOffline } from "@/lib/offline/provider";
+import { deleteDraft, readDraft, saveDraft } from "@/lib/offline/store";
 
 export interface EntryPlayer {
   id: string;
@@ -17,6 +19,11 @@ export interface EntryPlayer {
   heightCm: number | null;
   weightKg: number | null;
 }
+
+/** Attente apres la derniere frappe avant l'envoi automatique. */
+const AUTOSAVE_DELAY_MS = 1200;
+
+type SaveState = "idle" | "saving" | "saved" | "queued";
 
 export function TestEntryGrid({
   sessionId,
@@ -33,18 +40,152 @@ export function TestEntryGrid({
 }) {
   const t = useT();
   const pick = usePick();
+  const { online, queueSave } = useOffline();
   const [values, setValues] = useState<Record<string, Record<string, string>>>(initialValues);
   const [response, setResponse] = useState<SaveResultsResponse | null>(null);
   const [pending, startTransition] = useTransition();
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
   const gridRef = useRef<HTMLTableElement>(null);
 
+  /**
+   * Joueurs modifies depuis le dernier envoi reussi.
+   *
+   * C'est le coeur de l'enregistrement automatique : seules ces lignes partent.
+   * Renvoyer tout l'effectif a chaque frappe recalculerait les metriques
+   * derivees de vingt cinq joueurs pour une valeur changee, et ecraserait au
+   * passage le travail d'un collegue qui saisit la meme passation sur un autre
+   * appareil.
+   */
+  const dirty = useRef<Set<string>>(new Set());
+  const timer = useRef<number | null>(null);
+  /** Derniere version des valeurs, lisible depuis un minuteur ou un evenement. */
+  const latest = useRef(values);
+  latest.current = values;
+
+  // ---------------------------------------------------------------------------
+  // Brouillon local
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Reprise d'une saisie interrompue.
+   *
+   * Le brouillon ne prime que la ou il apporte quelque chose : une valeur deja
+   * enregistree cote serveur reste la reference, une valeur tapee mais jamais
+   * partie est restauree. Ce qui compte est de ne jamais afficher une grille vide
+   * alors que le travail a ete fait.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    void readDraft(sessionId, test.key).then((draft) => {
+      if (cancelled || !draft) return;
+      setValues((current) => {
+        const merged = { ...current };
+        for (const [playerId, fields] of Object.entries(draft.values)) {
+          merged[playerId] = { ...(current[playerId] ?? {}), ...fields };
+        }
+        return merged;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, test.key]);
+
+  // ---------------------------------------------------------------------------
+  // Envoi
+  // ---------------------------------------------------------------------------
+
+  const commit = useCallback(
+    (playerIds: string[], silent: boolean) => {
+      if (!canEdit || playerIds.length === 0) return;
+
+      const entries = playerIds.map((playerId) => ({
+        playerId,
+        values: latest.current[playerId] ?? {},
+      }));
+
+      // Les lignes partent : elles ne sont plus en attente de frappe. En cas
+      // d'echec reseau elles rejoignent la file, pas cet ensemble.
+      for (const playerId of playerIds) dirty.current.delete(playerId);
+      setSaveState("saving");
+
+      startTransition(async () => {
+        try {
+          const result = await saveResultsAction({
+            sessionId,
+            testKey: test.key,
+            entries,
+            silent,
+          });
+          setResponse(result);
+          setSaveState("saved");
+          setSavedAt(new Date());
+
+          /*
+           * Plus rien en attente : le brouillon local n'a plus de raison d'etre,
+           * et il devient nuisible. Conserve, il serait refusionne a la prochaine
+           * ouverture et masquerait une correction faite entre temps depuis un
+           * autre appareil. Le brouillon n'existe donc que le temps ou il porte du
+           * travail non envoye.
+           */
+          if (dirty.current.size === 0) await deleteDraft(sessionId, test.key);
+        } catch {
+          // Reseau absent : la saisie part en file locale et repartira seule.
+          await queueSave({ sessionId, testKey: test.key, entries });
+          setSaveState("queued");
+        }
+      });
+    },
+    [canEdit, queueSave, sessionId, test.key],
+  );
+
+  const schedule = useCallback(() => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => {
+      timer.current = null;
+      commit([...dirty.current], true);
+    }, AUTOSAVE_DELAY_MS);
+  }, [commit]);
+
   const setValue = (playerId: string, fieldKey: string, value: string) => {
-    setValues((previous) => ({
-      ...previous,
-      [playerId]: { ...(previous[playerId] ?? {}), [fieldKey]: value },
-    }));
+    const next = {
+      ...latest.current,
+      [playerId]: { ...(latest.current[playerId] ?? {}), [fieldKey]: value },
+    };
+    latest.current = next;
+    setValues(next);
     setResponse(null);
+    dirty.current.add(playerId);
+    void saveDraft(sessionId, test.key, next);
+    schedule();
   };
+
+  /**
+   * Un ecran de telephone qui s'eteint, une application basculee en arriere plan :
+   * le minuteur ne se declenchera peut etre jamais. On envoie donc ce qui reste
+   * des que la page cesse d'etre visible.
+   */
+  useEffect(() => {
+    const flushNow = () => {
+      if (dirty.current.size === 0) return;
+      if (timer.current !== null) {
+        window.clearTimeout(timer.current);
+        timer.current = null;
+      }
+      commit([...dirty.current], true);
+    };
+
+    const onHide = () => {
+      if (document.visibilityState === "hidden") flushNow();
+    };
+
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      if (timer.current !== null) window.clearTimeout(timer.current);
+    };
+  }, [commit]);
 
   const filledCount = useMemo(
     () =>
@@ -80,18 +221,25 @@ export function TestEntryGrid({
     else if (event.key === "ArrowUp") move(rowIndex - 1, colIndex);
   };
 
+  /**
+   * Enregistrement explicite.
+   *
+   * L'enregistrement automatique suffit, mais le bouton reste : sur le terrain on
+   * veut pouvoir decider soi meme que la ligne est finie, et voir la confirmation
+   * arriver. C'est aussi ce qui declenche la revalidation des autres ecrans, que
+   * l'enregistrement automatique reporte volontairement.
+   */
   const save = () => {
-    startTransition(async () => {
-      const result = await saveResultsAction({
-        sessionId,
-        testKey: test.key,
-        entries: players.map((player) => ({
-          playerId: player.id,
-          values: values[player.id] ?? {},
-        })),
-      });
-      setResponse(result);
-    });
+    if (timer.current !== null) {
+      window.clearTimeout(timer.current);
+      timer.current = null;
+    }
+    const filled = players
+      .filter((player) =>
+        Object.values(latest.current[player.id] ?? {}).some((v) => String(v).trim() !== ""),
+      )
+      .map((player) => player.id);
+    commit(filled, false);
   };
 
   // Les champs sont regroupes selon les intitules declares dans le catalogue.
@@ -279,6 +427,48 @@ export function TestEntryGrid({
             </>
           )}
         </button>
+
+        {/* Etat de l'enregistrement automatique. Discret, mais toujours present :
+            c'est ce qui autorise a ne plus penser au bouton. */}
+        {canEdit ? (
+          <span
+            className="inline-flex items-center gap-1.5 text-[0.8125rem]"
+            style={{
+              color:
+                saveState === "queued"
+                  ? "var(--warning)"
+                  : saveState === "saved"
+                    ? "var(--success)"
+                    : "var(--text-muted)",
+            }}
+            aria-live="polite"
+          >
+            {saveState === "saving" ? (
+              <>
+                <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                {t("common.saving")}
+              </>
+            ) : saveState === "queued" ? (
+              <>
+                <CloudOff size={14} aria-hidden="true" />
+                {t("entry.savedOnDevice")}
+              </>
+            ) : saveState === "saved" && savedAt ? (
+              <>
+                <Check size={14} aria-hidden="true" />
+                {t("entry.autosaved")}{" "}
+                <span className="tabular">
+                  {savedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </>
+            ) : (
+              <>
+                {!online ? <CloudOff size={14} aria-hidden="true" /> : null}
+                {t("entry.autosaveOn")}
+              </>
+            )}
+          </span>
+        ) : null}
 
         <span className="text-[0.8125rem] tabular" style={{ color: "var(--text-muted)" }}>
           {filledCount} / {players.length} {t("entry.playersFilled")}

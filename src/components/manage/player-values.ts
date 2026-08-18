@@ -6,13 +6,16 @@
  * formulaire client qui les affiche.
  */
 
+/**
+ * Le sexe ne figure pas ici : il n'est pas saisi mais derive de l'equipe
+ * d'accueil, cote serveur. Voir `playerSchema` dans src/app/actions/squad.ts.
+ */
 export interface PlayerFormValues {
   id?: string;
   teamId: string;
   firstName: string;
   lastName: string;
   birthDate: string;
-  sex: string;
   position: string;
   secondaryPosition: string;
   dominantFoot: string;
@@ -30,7 +33,6 @@ export const emptyPlayer = (teamId: string): PlayerFormValues => ({
   firstName: "",
   lastName: "",
   birthDate: "",
-  sex: "M",
   position: "CM",
   secondaryPosition: "",
   dominantFoot: "R",

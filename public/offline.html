@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Prepa Physique</title>
+    <style>
+      :root {
+        --bg: #f6f8fb;
+        --panel: #ffffff;
+        --text: #0f172a;
+        --muted: #64748b;
+        --border: #e2e8f0;
+        --accent: #1e40af;
+        --accent-text: #ffffff;
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0a0f1c;
+          --panel: #111827;
+          --text: #e8eef8;
+          --muted: #7d8ea8;
+          --border: #22304d;
+          --accent: #4f83f1;
+          --accent-text: #04122e;
+          color-scheme: dark;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 1.5rem;
+        background: var(--bg);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .card {
+        width: 100%;
+        max-width: 26rem;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 1.75rem 1.5rem;
+        text-align: center;
+        box-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
+      }
+      .logo {
+        width: 3rem;
+        height: 3rem;
+        margin: 0 auto 1.25rem;
+        border-radius: 0.75rem;
+        background: var(--accent);
+        display: grid;
+        place-items: center;
+      }
+      .logo svg { width: 1.5rem; height: 1.5rem; stroke: var(--accent-text); }
+      h1 { font-size: 1.125rem; margin: 0 0 0.5rem; letter-spacing: -0.01em; }
+      p { margin: 0 0 0.35rem; font-size: 0.9375rem; line-height: 1.55; color: var(--muted); }
+      .en { font-size: 0.875rem; opacity: 0.75; }
+      button {
+        margin-top: 1.5rem;
+        width: 100%;
+        min-height: 2.75rem;
+        border: 0;
+        border-radius: 0.5rem;
+        background: var(--accent);
+        color: var(--accent-text);
+        font-size: 0.9375rem;
+        font-weight: 500;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      button:active { filter: brightness(0.92); }
+      .hint {
+        margin-top: 1rem;
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+        </svg>
+      </div>
+
+      <h1>Aucune connexion</h1>
+      <p>Cette page n'a pas encore ete ouverte sur cet appareil, elle ne peut donc pas etre affichee hors ligne. Les pages deja visitees, elles, restent accessibles.</p>
+      <p><strong>Vos saisies ne sont pas perdues</strong> : elles sont conservees sur l'appareil et envoyees des le retour du reseau.</p>
+      <p class="en">No connection. Pages you have already opened stay available offline, and anything you typed is kept on the device and sent as soon as the network is back.</p>
+
+      <button type="button" onclick="window.location.reload()">
+        Reessayer / Retry
+      </button>
+
+      <p class="hint" id="status"></p>
+    </div>
+
+    <script>
+      // Des que la connexion revient, on recharge sans attendre une action.
+      window.addEventListener("online", function () {
+        window.location.reload();
+      });
+
+      var status = document.getElementById("status");
+      function refreshStatus() {
+        status.textContent = navigator.onLine
+          ? "Reseau detecte / Network available"
+          : "Aucun reseau / No network";
+      }
+      window.addEventListener("online", refreshStatus);
+      window.addEventListener("offline", refreshStatus);
+      refreshStatus();
+    </script>
+  </body>
+</html>

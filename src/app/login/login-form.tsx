@@ -6,6 +6,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { loginAction, type ActionState } from "@/app/actions/auth";
 import { useT } from "@/lib/i18n/client";
+import { FormProgress } from "@/components/shell/form-progress";
 
 function SubmitButton() {
   const t = useT();
@@ -31,6 +32,7 @@ export function LoginForm({ from }: { from?: string }) {
 
   return (
     <form action={formAction} className="space-y-4" noValidate>
+      <FormProgress />
       {from ? <input type="hidden" name="from" value={from} /> : null}
 
       {state.error ? (

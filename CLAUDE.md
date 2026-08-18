@@ -1,0 +1,129 @@
+# CLAUDE.md
+
+Application de preparation physique football : suivi d'equipes, batterie de tests scientifiques, statistiques, graphiques et recommandations, vendue en marque blanche a d'autres preparateurs.
+
+## Commandes
+
+```bash
+npm run dev            # serveur de developpement
+npm run build          # prisma generate + next build
+npm run start          # serveur de production
+npm run lint           # ATTENTION : ESLint n'a jamais ete configure ici, la
+                       # commande ouvre un assistant interactif et bloque.
+                       # Ne pas l'appeler sans intention de la configurer.
+npm run typecheck      # tsc --noEmit, le vrai filet de securite du projet
+npm run verify:science # controle les calculs contre les valeurs publiees
+npm run verify:norms   # controle la distribution des percentiles
+npm run verify:db      # controle la connexion Supabase
+npm run db:push        # applique le schema, passe par DIRECT_URL
+npm run db:seed        # donnees de demonstration
+npm run owner:ensure   # cree ou repare le compte proprietaire sans toucher au reste
+```
+
+Il n'y a ni suite de tests unitaires ni ESLint configure. La verification se fait par `typecheck`, `verify:science` et `verify:norms`. Les trois doivent passer avant toute mise en production. Un changement dans `src/lib/sports-science/` sans `verify:science` vert n'est pas termine.
+
+## Structure
+
+```
+src/app/app/        interface preparateur, protegee par le middleware
+src/app/admin/      panneau proprietaire, role OWNER uniquement
+src/app/actions/    toutes les mutations, un fichier par domaine
+src/lib/queries.ts  toutes les lectures, chacune enveloppee dans cache()
+src/lib/sports-science/  calculs purs, aucun acces base, aucun texte d'interface
+src/lib/i18n/       dictionary.ts (cles), server.ts (getT), client.tsx (useT)
+src/components/ui/  primitives.tsx et skeleton.tsx, la base visuelle
+src/components/manage/  formulaires de gestion, partages creation et edition
+scripts/            outils ponctuels en tsx ou mjs, jamais importes par l'app
+```
+
+Regles suivies :
+
+- Une lecture reutilisee par plusieurs zones va dans `queries.ts` et passe par `cache()`, sinon deux frontieres Suspense declenchent deux fois la meme requete. Une lecture propre a une seule page peut appeler `prisma` directement dans la page.
+- Un fichier `"use server"` ne peut exporter que des fonctions async. Les constantes et les types partages avec le client vont dans un module sans directive, voir `src/components/manage/player-values.ts`.
+- `src/lib/sports-science/` ne connait ni Prisma ni React. C'est ce qui rend `verify:science` possible.
+- Les commentaires sont en francais sans accents, en expliquant le pourquoi et non le quoi.
+
+## Conventions
+
+**Chargement progressif.** Chaque page qui lit des donnees porte `export const dynamic = "force-dynamic"` et decoupe ses requetes independantes en frontieres Suspense separees, avec un squelette de `components/ui/skeleton.tsx` en repli. Une requete lente ne doit jamais retarder une zone rapide.
+
+**Barre de progression.** Deux declencheurs, et un seul est sur : `route-progress.tsx` suit les clics de navigation, et `<FormProgress />` suit l'attente d'un formulaire. Ne jamais poser d'ecouteur global sur `submit` : il sait quand une action part, jamais quand elle revient, et la barre reste bloquee sur un mot de passe refuse. `FormProgress` lit `useFormStatus`, qui connait les deux moments, donc il se pose dans le `form` et nulle part ailleurs.
+
+**Langues.** Aucun texte visible en dur. Toute chaine passe par une cle de `dictionary.ts`, qui porte le francais et l'anglais cote a cote. Les cles sont typees : une traduction manquante casse la compilation. Les noms et protocoles de tests viennent du catalogue scientifique, qui porte deja ses champs `fr` et `en`. Les recommandations restent en francais.
+
+**Droits.** Chaque action reverifie le droit cote serveur a partir de la session, via `requireTeamEditor` ou `requireClubAdmin`, jamais a partir de ce que le formulaire envoie. Une requete forgee ne doit ouvrir aucun acces que l'interface ne donne pas. Toute mutation ecrit une ligne dans `AuditLog`.
+
+**Couleurs.** Uniquement des variables CSS (`var(--text-muted)`, `var(--danger-soft)`). Aucun hexadecimal dans un composant, sinon le theme sombre casse.
+
+**Plans.** Les plafonds (`maxPlayers`, `maxTeams`) appartiennent au proprietaire. Un client ne releve jamais ses propres limites, et un depassement renvoie un message explicite, pas un echec silencieux.
+
+## Pieges
+
+**Prisma, deux connecteurs.** Le schema est ecrit dans l'intersection SQLite et PostgreSQL : aucun enum natif, aucun type `Json`, aucune liste scalaire. Les valeurs d'enumeration vivent dans `src/lib/constants.ts`. Basculer avec `npm run db:sqlite` ou `npm run db:postgres`, jamais a la main.
+
+**Supabase, quatre pieges silencieux.**
+1. `DATABASE_URL` passe par le pooler port 6543 avec `pgbouncer=true`, `DIRECT_URL` par le port 5432. Le mode transaction refuse les instructions de schema, donc `db:push` echoue sans `DIRECT_URL`.
+2. Encoder le mot de passe : `@` devient `%40`, `$` devient `%24`.
+3. Ne jamais utiliser `db.<ref>.supabase.co`, publie en IPv6 seulement, injoignable ici. Le prefixe de l'hote est `aws-1`, pas `aws-0`.
+4. `connection_limit=10`, pas 1. La valeur 1 vaut pour du serverless ; ici les frontieres Suspense tirent en parallele et le pool expire.
+
+**Windows.** Arreter le serveur de developpement avant `npm run build`, sinon Prisma echoue en `EPERM` sur `query_engine-windows.dll.node`, la DLL etant tenue par le processus. Aucun module natif ne compile sur cette machine, faute de Visual Studio : `bcryptjs` et jamais `bcrypt`.
+
+**Fichier .env.** Next.js interprete `$` dans une valeur. Un hachage bcrypt ou un mot de passe qui en contient doit etre echappe, sinon la connexion echoue en silence.
+
+**Tailwind et les classes maison.** Les classes de composants de `globals.css`
+(`.btn`, `.field`, `.panel`) sont declarees hors couche. Elles gagnent donc
+contre les utilitaires Tailwind, qui vivent dans la couche `utilities`.
+Consequence concrete : `className="btn hidden sm:inline-flex"` n'est pas masque,
+`.btn` impose son `display: inline-flex`. Porter le masquage sur une enveloppe,
+ou verifier le rendu reel. Seules les proprietes que `.btn` ne definit pas,
+comme `w-full`, se comportent normalement.
+
+**Science.** Deux points a ne pas reintroduire :
+- Le chronometre d'un sprint ne demarre pas au premier mouvement. `TIMING_OFFSETS` doit etre applique avant l'ajustement, sans quoi F0 double.
+- Les asymetries se lisent par seuil (`METRIC_THRESHOLDS`), jamais par percentile. Une population de reference d'asymetries n'a pas de sens clinique.
+
+## Page publique
+
+Elle est adressee a un visiteur qui ne connait pas le produit, et obeit a des
+regles differentes de l'application :
+
+- **Aucune grille de cartes.** Les cadres arrondis alignes quatre par quatre
+  sont la signature visuelle des pages generees, et le public vise les
+  reconnait. La hierarchie passe par la taille, le blanc et des filets `hr.rule`.
+- **Aucun tiret dans la copie**, ni demi cadratin ni trait d'union de liaison.
+  Les seuls tirets tolerables viennent des noms de tests du catalogue, comme
+  Yo-Yo ou 30-15, qui sont des noms propres.
+- **Aucun avis invente.** `src/lib/testimonials.ts` est vide et la section ne
+  s'affiche pas tant qu'il l'est. Un faux temoignage fait refuser le compte
+  Stripe et tombe sous la publicite trompeuse. Chaque entree porte la date de
+  l'accord ecrit de publication.
+- **Les chiffres se comptent, ils ne s'ecrivent pas.** Nombre de tests, de
+  normes, de populations, plafonds et tarifs viennent du catalogue, de
+  `constants.ts` et de `marketing.ts`.
+- **Animations sans bibliotheque.** `animation-timeline: view()` dans
+  `globals.css`. Les navigateurs qui l'ignorent affichent le contenu immobile
+  et complet. Ne jamais cacher un element par defaut en attendant un script.
+
+Ce que Stripe verifie et qui doit rester vrai : un tarif visible en euro, les
+conditions de resiliation, la politique de remboursement, la confidentialite,
+l'identite de l'entreprise, et un service client joignable. Les quatre pages
+sont sous `/legal` et liees depuis le pied de page.
+
+## Contraintes fermes
+
+**L'APK ne se reconstruit pas pour une modification de l'application.** C'est une coque Capacitor qui pointe vers `APP_URL` ; tout le contenu vient du serveur. Un simple redeploiement suffit, les telephones recoivent la mise a jour au rechargement. L'APK se reconstruit uniquement si l'`appId`, le nom, l'icone, l'ecran de lancement, la page hors ligne ou l'adresse du serveur changent :
+
+```bash
+APP_URL=https://lamsaa.ma npm run android:sync && npm run android:apk
+```
+
+- L'`appId` `ma.lamsaa.prepaphysique` est definitif des la premiere distribution. Le changer produit une application differente, sans mise a jour possible pour ceux qui ont l'ancienne.
+- Capacitor reste en version 6. La 7 exige le JDK 21, la machine a le 17. `compileSdk` et `targetSdk` restent a 35.
+- La cle de signature ne s'ecrit jamais sur le disque en clair. `android/release.jks`, `*.jks`, `*.keystore` et `dist-apk/` sont ignores par git.
+
+**Secrets.** `.env` n'est jamais commite, jamais recopie dans un fichier suivi, jamais affiche dans une reponse. Les identifiants Supabase et les mots de passe de comptes n'existent qu'a cet endroit.
+
+**Donnees de production.** La base Supabase est la vraie base du client. Ne jamais lancer `db:reset`, ne jamais reecrire le mot de passe d'un compte existant, ne jamais supprimer de joueur sans demande explicite. Pour creer ou reparer le compte proprietaire, `npm run owner:ensure`, qui ne touche a rien d'autre.
+
+**Git.** Demander avant tout `commit` ou `push` vers `omarchaouki/prepa-physique`.

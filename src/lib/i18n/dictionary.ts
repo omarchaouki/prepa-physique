@@ -502,6 +502,19 @@ export const MESSAGES = {
   "entry.rowEmpty": ["Ligne vide", "Empty row"],
   "entry.save": ["Enregistrer", "Save"],
   "entry.playersFilled": ["joueurs renseignes", "players filled in"],
+  "entry.autosaveOn": ["Enregistrement automatique", "Autosave on"],
+  "entry.autosaved": ["Enregistre a", "Saved at"],
+  "entry.savedOnDevice": [
+    "Conserve sur l'appareil, envoi au retour du reseau",
+    "Kept on the device, sent when the network returns",
+  ],
+
+  // --- Reseau et file d'attente ---------------------------------------------
+  "offline.offline": ["Hors ligne", "Offline"],
+  "offline.syncing": ["Envoi des saisies", "Sending entries"],
+  "offline.pendingOne": ["saisie en attente", "entry pending"],
+  "offline.pendingMany": ["saisies en attente", "entries pending"],
+  "offline.retry": ["Envoyer maintenant", "Send now"],
   "entry.keyboardHint": [
     "Entree ou fleche bas pour passer au joueur suivant",
     "Enter or down arrow moves to the next player",
@@ -831,8 +844,22 @@ export const MESSAGES = {
     "The form stays open so you can enter the whole squad in one go",
   ],
   "manage.editPlayer": ["Modifier le joueur", "Edit player"],
-  "manage.playerAdded": ["a ete ajoute a l'effectif.", "has been added to the squad."],
+  // Le nom de l'equipe est ajoute apres cette phrase : l'ajout se fait toujours
+  // dans une equipe precise, et le message doit le rappeler.
+  "manage.playerAddedTo": ["a ete ajoute a", "has been added to"],
   "manage.playerSaved": ["Joueur enregistre.", "Player saved."],
+  "manage.playerTeamHint": [
+    "Le joueur sera ajoute a cette equipe.",
+    "The player will be added to this team.",
+  ],
+  "manage.sexFromTeam": [
+    "Sexe defini par l'equipe",
+    "Sex set by the team",
+  ],
+  "manage.playersRealigned": [
+    "joueur(s) realigne(s) sur le sexe de l'equipe.",
+    "player(s) realigned to the team's sex.",
+  ],
   "manage.playerInvalid": [
     "Verifier les champs obligatoires : nom, prenom et date de naissance.",
     "Check the required fields: last name, first name and date of birth.",
@@ -964,6 +991,248 @@ export const MESSAGES = {
   "chart.strongSide": ["cote fort", "strong side"],
   "chart.gap": ["Ecart", "Gap"],
   "chart.percentileSuffix": ["e percentile", "th percentile"],
+
+  // --- Page publique --------------------------------------------------------
+  // Seule zone de l'application adressee a un visiteur qui ne connait pas le
+  // produit. Le ton y est commercial, mais aucune affirmation n'y est inventee :
+  // les chiffres viennent du catalogue scientifique et des plafonds de forfait.
+  //
+  // Regle de redaction tenue ici : phrases courtes, aucun tiret, une idee par
+  // ligne. Ce qui ne tient pas en une phrase n'a pas sa place sur une page
+  // d'accueil.
+  "home.navFeatures": ["Ce que ca mesure", "What it measures"],
+  "home.navScience": ["Science", "Science"],
+  "home.navPlans": ["Tarifs", "Pricing"],
+  "home.navQuestions": ["Questions", "Questions"],
+  "home.navLogin": ["Se connecter", "Sign in"],
+  "home.navOpenApp": ["Ouvrir l'application", "Open the app"],
+  "home.navDemo": ["Demander une demo", "Book a demo"],
+  "home.skipToContent": ["Aller au contenu", "Skip to content"],
+
+  // Hero
+  "home.heroKicker": ["Preparation physique football", "Football physical preparation"],
+  "home.heroLine1": ["Une saison", "A season"],
+  "home.heroLine2": ["se mesure.", "is measured."],
+  "home.heroBody": [
+    "La condition physique de votre effectif, chiffree, comparee a des normes publiees, et expliquee en une page par joueur.",
+    "Your squad's physical condition, quantified, compared against published norms, and explained on one page per player.",
+  ],
+  "home.heroNote": [
+    "Essai de {days} jours. Aucune carte bancaire demandee.",
+    "{days} day trial. No card required.",
+  ],
+  "home.heroImageAlt": [
+    "Seance de tests physiques sur un terrain de football",
+    "Physical testing session on a football pitch",
+  ],
+
+  // Bandeau de preuve
+  "home.proofTests": ["tests de terrain", "field tests"],
+  "home.proofBatteries": ["batteries pretes", "ready batteries"],
+  "home.proofNorms": ["lignes de normes", "norm rows"],
+  "home.proofPopulations": ["populations de reference", "reference populations"],
+
+  // Le probleme
+  "home.gapTitle": [
+    "Un carnet ne dit jamais qui progresse",
+    "A notebook never tells you who is progressing",
+  ],
+  "home.gapBody": [
+    "Vous mesurez deja. Le probleme n'est pas la mesure, c'est ce qui vient apres : comparer un chiffre a la bonne population, voir une asymetrie avant la blessure, et sortir une reponse en fin de seance plutot qu'en fin de semaine.",
+    "You already measure. Measuring is not the problem. What follows is: comparing a number against the right population, spotting an asymmetry before the injury, and having an answer by the end of the session rather than the end of the week.",
+  ],
+  "home.gap1": [
+    "Un dix metres en 1,82 s ne veut rien dire seul. Compare aux U17 nationaux, il devient une decision.",
+    "A ten metre split of 1.82 s means nothing on its own. Against national U17 data, it becomes a decision.",
+  ],
+  "home.gap2": [
+    "Une asymetrie de 14 % se lit en trois secondes ici. Sur un tableur, personne ne la voit passer.",
+    "A 14 % asymmetry shows up here in three seconds. On a spreadsheet nobody catches it.",
+  ],
+  "home.gap3": [
+    "La charge d'entrainement se calcule seule, a chaque seance saisie, sans une formule a recopier.",
+    "Training load computes itself, session after session, with no formula to copy across.",
+  ],
+
+  // Methode
+  "home.methodTitle": ["Quatre gestes, rien de plus", "Four moves, nothing more"],
+  "home.step1Title": ["Vous choisissez la batterie", "Pick the battery"],
+  "home.step1Body": [
+    "Six batteries pretes, du bilan de reprise au suivi de retour au jeu.",
+    "Six ready batteries, from preseason screening to return to play.",
+  ],
+  "home.step2Title": ["Vous saisissez au bord du terrain", "Enter it pitchside"],
+  "home.step2Body": [
+    "Une grille par test, au telephone, une main libre pour le chronometre.",
+    "One grid per test, on the phone, one hand free for the stopwatch.",
+  ],
+  "home.step3Title": ["L'application calcule", "The app computes"],
+  "home.step3Body": [
+    "Profils force vitesse, percentiles, asymetries, maturite. Immediatement.",
+    "Force velocity profiles, percentiles, asymmetries, maturity. Immediately.",
+  ],
+  "home.step4Title": ["Vous decidez", "You decide"],
+  "home.step4Body": [
+    "Une recommandation ecrite par joueur, avec la reference qui la fonde.",
+    "A written recommendation per player, with the reference behind it.",
+  ],
+
+  // Ce que ca mesure
+  "home.measureTitle": ["Ce que la plateforme mesure", "What the platform measures"],
+  "home.measureBody": [
+    "Vingt deux tests de terrain, chacun avec son protocole, son materiel et sa reference. Aucun n'a ete ajoute pour faire nombre.",
+    "Twenty two field tests, each with its protocol, its equipment and its reference. None was added to pad the list.",
+  ],
+
+  // Bande terrain
+  "home.fieldTitle": ["Concu pour un terrain, pas pour un bureau", "Built for a pitch, not a desk"],
+  "home.fieldBody": [
+    "Une saisie qui tient dans une main, un affichage lisible en plein soleil, et une page qui s'ouvre avant que le joueur ait fini son retour au calme.",
+    "One handed entry, a display you can read in full sun, and a page that opens before the player has finished cooling down.",
+  ],
+  "home.fieldPoint1": [
+    "Chaque page s'affiche immediatement, les chiffres arrivent ensuite.",
+    "Every page appears at once, the numbers follow.",
+  ],
+  "home.fieldPoint2": [
+    "Application Android installable, meme interface que sur ordinateur.",
+    "Installable Android app, same interface as on desktop.",
+  ],
+  "home.fieldPoint3": [
+    "Francais et anglais, changeables a tout moment, protocoles compris.",
+    "French and English, switchable at any time, protocols included.",
+  ],
+  "home.fieldImageAlt": [
+    "Joueurs a l'entrainement pendant une batterie de tests",
+    "Players training during a testing battery",
+  ],
+
+  // Staff
+  "home.staffTitle": ["Ce que voit le reste du staff", "What the rest of the staff sees"],
+  "home.staffBody": [
+    "L'entraineur principal n'a pas besoin de vos tableaux. Il a besoin de savoir qui est disponible samedi.",
+    "The head coach does not need your spreadsheets. They need to know who is available on Saturday.",
+  ],
+  "home.staffPoint1": [
+    "Un effectif trie par disponibilite reelle",
+    "A squad sorted by real availability",
+  ],
+  "home.staffPoint2": [
+    "Les joueurs a surveiller, remontes seuls",
+    "Players to watch, surfaced on their own",
+  ],
+  "home.staffPoint3": [
+    "L'evolution d'un joueur sur toute la saison",
+    "One player's trajectory across the season",
+  ],
+  "home.staffPoint4": [
+    "Un acces en lecture seule pour qui n'a pas a modifier",
+    "Read only access for those who should not edit",
+  ],
+  "home.staffImageAlt": [
+    "Staff technique analysant les resultats d'une seance",
+    "Coaching staff reviewing session results",
+  ],
+
+  // Science
+  "home.scienceTitle": ["Rien n'est estime a l'oeil", "Nothing is estimated by eye"],
+  "home.scienceBody": [
+    "Chaque calcul porte le nom de la publication dont il vient. Vous pouvez la retrouver, la lire, et contester le resultat.",
+    "Every calculation carries the name of the publication it comes from. You can find it, read it, and challenge the result.",
+  ],
+  "home.scienceNote": [
+    "Les normes proviennent d'etudes publiees sur des populations de football. Elles ne remplacent ni un diagnostic ni un avis medical.",
+    "Norms come from published studies on football populations. They replace neither a diagnosis nor medical advice.",
+  ],
+
+  // Avis
+  "home.reviewsTitle": ["Ce qu'en disent les clubs", "What clubs say"],
+
+  // Tarifs
+  "home.plansTitle": ["Un tarif par taille de club", "One price per club size"],
+  "home.plansSubtitle": [
+    "Sans engagement. Resiliable a tout moment depuis votre compte, avec effet a la fin de la periode payee.",
+    "No commitment. Cancel any time from your account, effective at the end of the paid period.",
+  ],
+  "home.plansMonth": ["par mois", "per month"],
+  "home.plansVat": ["hors taxes", "excluding VAT"],
+  "home.plansTeam": ["equipe", "team"],
+  "home.plansTeams": ["equipes", "teams"],
+  "home.plansPlayer": ["joueur", "player"],
+  "home.plansPlayers": ["joueurs", "players"],
+  "home.plansFree": ["Gratuit", "Free"],
+  "home.plansTrialDays": ["{days} jours", "{days} days"],
+  "home.plansQuote": ["Sur devis", "On request"],
+  "home.plansPopular": ["Le plus choisi", "Most chosen"],
+  "home.plansChoose": ["Choisir", "Choose"],
+  "home.plansAllIncluded": [
+    "Toutes les formules donnent acces aux {count} tests, aux normes, aux recommandations et a l'application Android. Le forfait ne limite que le nombre d'equipes et de joueurs suivis.",
+    "Every plan includes all {count} tests, the norms, the recommendations and the Android app. The plan limits only how many teams and players you track.",
+  ],
+  "home.plansWhiteLabel": ["Marque blanche", "White label"],
+  "home.plansWhiteLabelBody": [
+    "Votre nom, vos couleurs, votre domaine, pour les federations et les groupes de clubs.",
+    "Your name, your colours, your domain, for federations and club groups.",
+  ],
+
+  // Questions
+  "home.faqTitle": ["Questions", "Questions"],
+  "home.faq1Q": ["Comment se passe la facturation ?", "How does billing work?"],
+  "home.faq1A": [
+    "Vous etes preleve chaque mois, le jour de votre souscription, par carte bancaire. La facture arrive par courriel le meme jour. Les montants annonces sont hors taxes.",
+    "You are charged monthly, on your signup date, by card. The invoice arrives by email the same day. Prices shown exclude VAT.",
+  ],
+  "home.faq2Q": ["Puis je arreter quand je veux ?", "Can I stop whenever I want?"],
+  "home.faq2A": [
+    "Oui. La resiliation se fait depuis votre compte, sans nous ecrire et sans justification. Vous gardez l'acces jusqu'a la fin de la periode deja payee, puis le compte reste consultable trente jours pour vous laisser exporter.",
+    "Yes. Cancel from your account, without writing to us and without giving a reason. You keep access until the end of the period already paid, then the account stays readable for thirty days so you can export.",
+  ],
+  "home.faq3Q": ["Et si je ne suis pas satisfait ?", "What if I am not satisfied?"],
+  "home.faq3A": [
+    "L'essai de {days} jours existe pour repondre a cette question avant tout paiement. Passe ce delai, tout mois entame vous est rembourse integralement si vous en faites la demande dans les quatorze jours suivant le prelevement.",
+    "The {days} day trial exists to answer that before any payment. After it, any started month is refunded in full if you ask within fourteen days of the charge.",
+  ],
+  "home.faq4Q": ["A qui appartiennent mes donnees ?", "Who owns my data?"],
+  "home.faq4A": [
+    "A vous. Elles ne sont ni revendues, ni utilisees pour entrainer quoi que ce soit. L'export complet est disponible a tout moment, sans avoir a le demander.",
+    "You do. It is never resold, never used to train anything. Full export is available at any time, without asking.",
+  ],
+  "home.faq5Q": ["Faut il du materiel particulier ?", "Do I need special equipment?"],
+  "home.faq5A": [
+    "Un chronometre et des plots suffisent pour la majorite des tests. Les cellules photoelectriques et le tapis de saut ameliorent la precision, et l'application tient compte du dispositif utilise dans ses calculs.",
+    "A stopwatch and cones cover most tests. Timing gates and a jump mat improve precision, and the app accounts for the device used in its calculations.",
+  ],
+  "home.faq6Q": ["Combien de temps pour demarrer ?", "How long to get started?"],
+  "home.faq6A": [
+    "Une demonstration dure vingt minutes. La creation de votre club et de votre premier effectif prend le meme temps. Vous pouvez tester le soir meme.",
+    "A demo takes twenty minutes. Creating your club and first squad takes the same. You can test the same evening.",
+  ],
+
+  // Contact et pied de page
+  "home.finalTitle": ["Passez votre prochaine batterie ici", "Run your next battery here"],
+  "home.finalBody": [
+    "Vingt minutes, votre effectif reel, la batterie que vous passez deja. Nous repondons sous {hours} heures ouvrees.",
+    "Twenty minutes, your real squad, the battery you already run. We answer within {hours} working hours.",
+  ],
+  "home.contactSalesLabel": ["Commercial et demonstrations", "Sales and demos"],
+  "home.contactSupportLabel": ["Assistance et facturation", "Support and billing"],
+  "home.contactWhatsapp": ["Ecrire sur WhatsApp", "Message on WhatsApp"],
+  "home.demoSubject": [
+    "Demonstration Lamsaa preparation physique",
+    "Lamsaa physical preparation demo",
+  ],
+  "home.footerTagline": [
+    "Preparation physique football : tests, profils, analyses et recommandations.",
+    "Football physical preparation: testing, profiles, analyses and recommendations.",
+  ],
+  "home.footerProduct": ["Produit", "Product"],
+  "home.footerLegal": ["Informations legales", "Legal"],
+  "home.footerContact": ["Contact", "Contact"],
+  "home.footerRights": ["Tous droits reserves.", "All rights reserved."],
+  "home.footerCompanyMissing": [
+    "Raison sociale et adresse a renseigner dans le fichier .env du serveur.",
+    "Legal name and address to be filled in the server .env file.",
+  ],
 } as const satisfies Record<string, Entry>;
 
 export type MessageKey = keyof typeof MESSAGES;

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { BarChart3, ChevronLeft, Plus, Settings, Users } from "lucide-react";
+import { BarChart3, ChevronLeft, Plus, Settings, UserPlus, Users } from "lucide-react";
 
 import { canAccessTeam, requireUser } from "@/lib/auth";
 import { getSquadOverview, getTeamHeader, metricLabel } from "@/lib/queries";
@@ -10,6 +10,7 @@ import { resolvePopulation } from "@/lib/sports-science/norms";
 import { getLocale, getLocaleTag, getT } from "@/lib/i18n/server";
 import { formatNumber } from "@/lib/utils";
 import {
+  Alert,
   Badge,
   EmptyState,
   PageHeader,
@@ -79,7 +80,7 @@ async function SquadStatsSection({ teamId }: { teamId: string }) {
   );
 }
 
-async function SquadSection({ teamId }: { teamId: string }) {
+async function SquadSection({ teamId, canEdit }: { teamId: string; canEdit: boolean }) {
   const [overview, t, locale, tag] = await Promise.all([
     getSquadOverview(teamId),
     getT(),
@@ -121,20 +122,42 @@ async function SquadSection({ teamId }: { teamId: string }) {
             title={t("teams.noPlayers")}
             description={t("teams.noPlayersBody")}
             icon={<Users size={20} />}
-          />
-        ) : columns.length === 0 ? (
-          <EmptyState
-            title={t("teams.noTestData")}
-            description={t("teams.noTestDataBody")}
             action={
-              <Link href={`/app/sessions/new?team=${teamId}`} className="btn btn-primary">
-                <Plus size={15} aria-hidden="true" />
-                {t("dashboard.createSession")}
-              </Link>
+              canEdit ? (
+                <Link href={`/app/teams/${teamId}/manage`} className="btn btn-primary">
+                  <UserPlus size={15} aria-hidden="true" />
+                  {t("manage.addPlayer")}
+                </Link>
+              ) : null
             }
           />
         ) : (
-          <SquadTable rows={rows} columns={columns} squadStats={statsRecord} />
+          /*
+           * L'effectif s'affiche des qu'il y a un joueur, meme sans aucune mesure.
+           * Auparavant l'absence de colonne renvoyait vers un etat vide, ce qui
+           * masquait completement les joueurs d'une equipe qui n'a pas encore
+           * passe de tests : on croyait l'ajout perdu.
+           */
+          <>
+            {columns.length === 0 ? (
+              <div className="mb-3">
+                <Alert tone="info" title={t("teams.noTestData")}>
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                    {t("teams.noTestDataBody")}
+                    {canEdit ? (
+                      <Link
+                        href={`/app/sessions/new?team=${teamId}`}
+                        className="underline cursor-pointer font-medium"
+                      >
+                        {t("dashboard.createSession")}
+                      </Link>
+                    ) : null}
+                  </span>
+                </Alert>
+              </div>
+            ) : null}
+            <SquadTable rows={rows} columns={columns} squadStats={statsRecord} />
+          </>
         )}
       </Panel>
 
@@ -268,7 +291,7 @@ export default async function TeamPage({ params }: { params: Promise<{ teamId: s
           </Panel>
         }
       >
-        <SquadSection teamId={teamId} />
+        <SquadSection teamId={teamId} canEdit={access.canEdit} />
       </Suspense>
     </>
   );
