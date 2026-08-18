@@ -124,6 +124,26 @@ free -h
 `free -h` must show 2.0Gi on the Swap line. The `fstab` line makes it survive a
 reboot.
 
+**Swap alone is not enough.** There are two different out-of-memory failures,
+and they need two different fixes:
+
+| What you see | Who killed it | Fix |
+|---|---|---|
+| `Killed`, no other output | the kernel's OOM killer | swap, above |
+| `FATAL ERROR: ... JavaScript heap out of memory` | V8's own ceiling | raise the limit, below |
+
+Node sizes its heap from the RAM it detects. On a 1 GB instance that ceiling
+lands around 460 MB, and the type-checking phase of `next build` now needs more
+than that. V8 refuses to grow past its own limit even when swap is free, so the
+limit has to be raised explicitly:
+
+```bash
+NODE_OPTIONS="--max-old-space-size=1536" npm run build
+```
+
+Use this form for every build on this instance. It is slower, because the swap
+is doing real work, but it completes.
+
 ---
 
 ## Step 4 — install Node.js 22 and PM2
@@ -343,9 +363,13 @@ Deploy a new version, after pushing to GitHub from your PC:
 cd ~/prepa-physique
 git pull
 npm ci
-npm run build
+NODE_OPTIONS="--max-old-space-size=1536" npm run build
 pm2 restart prepa-physique
 ```
+
+The `NODE_OPTIONS` prefix is not optional on a 1 GB instance. Without it the
+build dies with `JavaScript heap out of memory` during type checking, even with
+swap active. See step 3.
 
 If `prisma/schema.prisma` changed:
 
@@ -393,7 +417,8 @@ awake, a demo nobody visits won't.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `npm run build` killed, no clear error | Out of memory | Swap from step 3; `free -h` to confirm it's active |
+| `npm run build` killed, no clear error | Kernel OOM killer | Swap from step 3; `free -h` to confirm it's active |
+| `FATAL ERROR: ... JavaScript heap out of memory` | V8's own heap ceiling, not the kernel | `NODE_OPTIONS="--max-old-space-size=1536" npm run build`. Swap alone does not fix this |
 | Build succeeds but `prisma generate` step complains about missing deps | `NODE_ENV=production` was exported before `npm ci` | `unset NODE_ENV`, re-run `npm ci` |
 | `P1001: Can't reach database server` | Wrong host, or `db.<ref>.supabase.co` used | Both URLs must go through `...pooler.supabase.com`, the direct host is IPv6-only |
 | `password authentication failed` | `@` or `$` not URL-encoded | `%40` and `%24` in the URL |

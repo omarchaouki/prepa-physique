@@ -132,6 +132,13 @@ sont sous `/legal` et liees depuis le pied de page.
   qui construit reellement le bundle. Les trois doivent passer.
 - Les versions des modules Expo se posent avec `npx expo install`, jamais a la
   main : celles ecrites de memoire n'existent pas.
+- **`mobile` est exclu du `tsconfig.json` racine, et doit le rester.** Le
+  `include` de la racine ramasse `**/*.tsx`, donc sans cette exclusion la
+  compilation Next.js verifie aussi l'application mobile. Le defaut ne se voit
+  pas ici, ou `mobile/node_modules` existe et resout les imports, mais il casse
+  la compilation du serveur ou `npm ci` n'installe que la racine. Pour
+  reproduire la condition du serveur : ecarter `mobile/node_modules`, puis
+  `npm run build`.
 
 ## Contraintes fermes
 
