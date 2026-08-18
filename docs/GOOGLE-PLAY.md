@@ -38,12 +38,19 @@ Ces trois points sont a regler dans le `.env` du serveur, pas dans l'application
 ## 3. Preparer la compilation
 
 ```bash
+npm install -g eas-cli
 cd mobile
 npm install
 npx expo install --fix
-npx eas login
-npx eas init
+eas login
+eas init
 ```
+
+**`eas-cli` s'installe globalement, il ne s'appelle pas par `npx eas`.** Le paquet
+publie s'appelle `eas-cli` et fournit un executable nomme `eas` : `npx eas`
+cherche donc un paquet inexistant et repond `could not determine executable to
+run`. La forme `npx eas-cli@latest login` fonctionne aussi, mais retelecharge
+l'outil a chaque appel.
 
 `eas init` inscrit l'identifiant du projet dans `app.json`, a la place de `a-renseigner-par-eas-init`.
 
@@ -52,8 +59,8 @@ npx eas init
 Compilation d'essai, puis celle du magasin :
 
 ```bash
-npm run build:preview    # APK installable directement, pour verifier
-npm run build:play       # AAB signe, le format attendu par Google Play
+eas build --profile preview --platform android   # APK installable directement, pour verifier
+eas build --profile production --platform android # AAB signe, le format attendu par Google Play
 ```
 
 ---

@@ -16,8 +16,13 @@ npm start
 Ensuite, `npm start` affiche un code a scanner avec Expo Go. Pour un vrai essai, il faut une compilation de developpement : Expo Go n'embarque pas `expo-sqlite` ni `expo-secure-store`.
 
 ```bash
-npx eas build --profile development --platform android
+npm install -g eas-cli
+eas build --profile development --platform android
 ```
+
+`eas-cli` s'installe globalement. `npx eas` echoue avec `could not determine
+executable to run` : le paquet publie s'appelle `eas-cli`, et `npx` cherche un
+paquet nomme `eas`.
 
 ## Ou pointe l'application
 
