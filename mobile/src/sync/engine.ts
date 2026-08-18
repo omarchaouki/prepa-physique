@@ -1,0 +1,391 @@
+import * as Crypto from "expo-crypto";
+
+import { ApiError, request } from "../api/client";
+import { getMeta, openDb, setMeta } from "../db";
+
+/**
+ * Moteur de synchronisation.
+ *
+ * Deux mouvements, toujours dans cet ordre :
+ *
+ *   1. La remontee, d'abord. Ce que le preparateur a saisi hors reseau part
+ *      avant tout le reste. Descendre en premier ecraserait localement une
+ *      valeur qu'il vient de mesurer par une version anterieure du serveur.
+ *   2. La descente ensuite, page par page, jusqu'a epuisement du curseur.
+ *
+ * Le moteur est volontairement sans etat en memoire : tout ce qu'il doit
+ * retenir vit dans la table `meta`. Un telephone tue par le systeme au milieu
+ * d'une synchronisation reprend exactement ou il en etait au lancement suivant.
+ */
+
+const CURSOR = "cursor";
+const LAST_SYNC = "lastSyncAt";
+const CATALOG = "catalog";
+const CATALOG_ETAG = "catalogEtag";
+
+export type SyncState = "idle" | "syncing" | "offline" | "error";
+
+export interface SyncReport {
+  pushed: number;
+  rejected: number;
+  pulled: number;
+  rounds: number;
+}
+
+// ---------------------------------------------------------------------------
+// File d'attente
+// ---------------------------------------------------------------------------
+
+export type OperationType = "session.upsert" | "results.save";
+
+/**
+ * Identifiant genere par le telephone.
+ *
+ * C'est lui qui rend la remontee idempotente : le serveur ecrit par `upsert`
+ * sur cet identifiant, donc un envoi rejoue apres une coupure produit le meme
+ * etat au lieu d'un doublon. Sans cette generation locale, il faudrait un
+ * registre d'operations cote serveur.
+ */
+export const newId = (): string => Crypto.randomUUID();
+
+export const enqueue = async (type: OperationType, payload: unknown): Promise<string> => {
+  const db = await openDb();
+  const id = newId();
+  await db.runAsync(
+    "INSERT INTO outbox (id, type, payload, createdAt) VALUES (?, ?, ?, ?)",
+    id,
+    type,
+    JSON.stringify(payload),
+    new Date().toISOString(),
+  );
+  return id;
+};
+
+export const pendingCount = async (): Promise<number> => {
+  const db = await openDb();
+  const row = await db.getFirstAsync<{ n: number }>("SELECT COUNT(*) AS n FROM outbox");
+  return row?.n ?? 0;
+};
+
+// ---------------------------------------------------------------------------
+// Remontee
+// ---------------------------------------------------------------------------
+
+interface Verdict {
+  id: string;
+  status: "applied" | "rejected";
+  error?: { code: string; message: string };
+}
+
+/** Nombre d'envois rates au dela duquel on cesse de reessayer sans le dire. */
+const MAX_ATTEMPTS = 5;
+
+const push = async (token: string): Promise<{ pushed: number; rejected: number }> => {
+  const db = await openDb();
+  let pushed = 0;
+  let rejected = 0;
+
+  for (;;) {
+    const batch = await db.getAllAsync<{
+      id: string;
+      type: OperationType;
+      payload: string;
+      attempts: number;
+    }>("SELECT id, type, payload, attempts FROM outbox ORDER BY createdAt ASC LIMIT 25");
+
+    if (batch.length === 0) break;
+
+    const operations = batch.map((row) => ({
+      id: row.id,
+      type: row.type,
+      payload: JSON.parse(row.payload),
+    }));
+
+    const { data } = await request<{ verdicts: Verdict[] }>("/api/sync", {
+      method: "POST",
+      token,
+      body: { operations },
+    });
+
+    for (const verdict of data.verdicts) {
+      if (verdict.status === "applied") {
+        await db.runAsync("DELETE FROM outbox WHERE id = ?", verdict.id);
+        pushed += 1;
+        continue;
+      }
+
+      // Un refus definitif ne doit pas rester en file a tourner indefiniment :
+      // le serveur repondra la meme chose au centieme essai. Une passation
+      // verrouillee ou un droit retire sont des refus definitifs.
+      const definitif =
+        verdict.error?.code === "FORBIDDEN" ||
+        verdict.error?.code === "NOT_FOUND" ||
+        verdict.error?.code === "INVALID_INPUT" ||
+        verdict.error?.code === "CONFLICT";
+
+      const row = batch.find((candidate) => candidate.id === verdict.id);
+      const attempts = (row?.attempts ?? 0) + 1;
+
+      if (definitif || attempts >= MAX_ATTEMPTS) {
+        await db.runAsync("DELETE FROM outbox WHERE id = ?", verdict.id);
+        rejected += 1;
+      } else {
+        await db.runAsync(
+          "UPDATE outbox SET attempts = ?, lastError = ? WHERE id = ?",
+          attempts,
+          verdict.error?.message ?? null,
+          verdict.id,
+        );
+      }
+    }
+
+    // Si aucune operation du lot n'a quitte la file, insister ferait une boucle.
+    const reste = await db.getFirstAsync<{ n: number }>("SELECT COUNT(*) AS n FROM outbox");
+    if ((reste?.n ?? 0) >= batch.length) break;
+  }
+
+  return { pushed, rejected };
+};
+
+// ---------------------------------------------------------------------------
+// Descente
+// ---------------------------------------------------------------------------
+
+interface PullPage {
+  serverTime: string;
+  cursor: string | null;
+  hasMore: boolean;
+  teams: Record<string, unknown>[];
+  players: Record<string, unknown>[];
+  sessions: Record<string, unknown>[];
+  results: Record<string, unknown>[];
+  metrics: Record<string, unknown>[];
+  alive: { teams: string[]; players: string[]; sessions: string[] } | null;
+}
+
+/** Colonnes ecrites par la descente, dans l'ordre attendu par la requete. */
+const COLUMNS = {
+  teams: ["id", "organizationId", "name", "category", "level", "sex", "season", "colorHex", "isActive", "updatedAt"],
+  players: ["id", "teamId", "firstName", "lastName", "birthDate", "sex", "position", "secondaryPosition", "dominantFoot", "jerseyNumber", "heightCm", "weightKg", "status", "updatedAt"],
+  sessions: ["id", "teamId", "date", "name", "testKeys", "surface", "weather", "temperatureC", "notes", "isLocked", "updatedAt"],
+  results: ["id", "sessionId", "playerId", "teamId", "testKey", "date", "rawJson", "computedJson", "quality", "updatedAt"],
+  metrics: ["id", "playerId", "teamId", "testResultId", "key", "value", "unit", "date", "side", "createdAt"],
+} as const;
+
+type Table = keyof typeof COLUMNS;
+
+const upsertRows = async (
+  db: Awaited<ReturnType<typeof openDb>>,
+  table: Table,
+  rows: Record<string, unknown>[],
+) => {
+  if (rows.length === 0) return;
+
+  const columns = COLUMNS[table];
+  const placeholders = columns.map(() => "?").join(", ");
+  const statement = await db.prepareAsync(
+    `INSERT OR REPLACE INTO ${table} (${columns.join(", ")}) VALUES (${placeholders})`,
+  );
+
+  try {
+    for (const row of rows) {
+      const values = columns.map((column) => {
+        const value = row[column];
+        if (value === undefined || value === null) return null;
+        // SQLite ne connait pas le booleen : il stocke zero ou un.
+        if (typeof value === "boolean") return value ? 1 : 0;
+        return value as string | number;
+      });
+      await statement.executeAsync(values);
+    }
+  } finally {
+    await statement.finalizeAsync();
+  }
+};
+
+/**
+ * Efface localement ce que le serveur ne connait plus.
+ *
+ * Une suppression ne laisse aucune trace en base cote serveur, un delta ne peut
+ * donc pas la transmettre : la reponse joint la liste des identifiants encore
+ * vivants, et tout ce qui n'y figure pas disparait ici.
+ *
+ * Les lignes encore en attente d'envoi sont epargnees : elles n'existent pas
+ * encore cote serveur, il est donc normal qu'elles soient absentes de la liste.
+ */
+const prune = async (
+  db: Awaited<ReturnType<typeof openDb>>,
+  alive: { teams: string[]; players: string[]; sessions: string[] },
+) => {
+  const chunk = (ids: string[]) => {
+    // SQLite plafonne le nombre de parametres d'une requete. On decoupe.
+    const size = 400;
+    const out: string[][] = [];
+    for (let i = 0; i < ids.length; i += size) out.push(ids.slice(i, i + size));
+    return out.length > 0 ? out : [[]];
+  };
+
+  const keepOnly = async (table: "teams" | "players" | "sessions", ids: string[]) => {
+    const survivants = new Set(ids);
+    const locaux = await db.getAllAsync<{ id: string }>(
+      table === "sessions"
+        ? "SELECT id FROM sessions WHERE pending = 0"
+        : `SELECT id FROM ${table}`,
+    );
+    const aSupprimer = locaux.map((row) => row.id).filter((id) => !survivants.has(id));
+
+    for (const lot of chunk(aSupprimer)) {
+      if (lot.length === 0) continue;
+      const marks = lot.map(() => "?").join(", ");
+      await db.runAsync(`DELETE FROM ${table} WHERE id IN (${marks})`, ...lot);
+    }
+    return aSupprimer.length;
+  };
+
+  await keepOnly("teams", alive.teams);
+  await keepOnly("players", alive.players);
+  await keepOnly("sessions", alive.sessions);
+
+  // Les lignes filles d'une passation disparue partent avec elle.
+  await db.execAsync(`
+    DELETE FROM results WHERE sessionId IS NOT NULL
+      AND sessionId NOT IN (SELECT id FROM sessions) AND pending = 0;
+    DELETE FROM metrics WHERE testResultId IS NOT NULL
+      AND testResultId NOT IN (SELECT id FROM results);
+  `);
+};
+
+const pull = async (token: string): Promise<{ pulled: number; rounds: number }> => {
+  const db = await openDb();
+  let cursor = await getMeta(CURSOR);
+  const lastSync = await getMeta(LAST_SYNC);
+
+  let pulled = 0;
+  let rounds = 0;
+
+  for (;;) {
+    rounds += 1;
+    if (rounds > 50) break; // garde fou, jamais atteint en pratique
+
+    const query = cursor
+      ? `?cursor=${encodeURIComponent(cursor)}`
+      : lastSync
+        ? `?since=${encodeURIComponent(lastSync)}`
+        : "";
+
+    const { data } = await request<PullPage>(`/api/sync${query}`, { token });
+
+    await db.withTransactionAsync(async () => {
+      for (const table of Object.keys(COLUMNS) as Table[]) {
+        const rows = data[table];
+        pulled += rows.length;
+        await upsertRows(db, table, rows);
+      }
+      // Les lignes confirmees par le serveur ne sont plus en attente.
+      await db.execAsync("UPDATE sessions SET pending = 0 WHERE pending = 1 AND id IN (SELECT id FROM sessions);");
+    });
+
+    if (data.hasMore && data.cursor) {
+      cursor = data.cursor;
+      await setMeta(CURSOR, cursor);
+      continue;
+    }
+
+    if (data.alive) await prune(db, data.alive);
+
+    // Le point de reprise n'avance qu'une fois la descente complete. Avancer
+    // plus tot ferait perdre ce qui n'a pas encore ete recu.
+    await setMeta(CURSOR, null);
+    await setMeta(LAST_SYNC, data.serverTime);
+    break;
+  }
+
+  return { pulled, rounds };
+};
+
+// ---------------------------------------------------------------------------
+// Catalogue des tests
+// ---------------------------------------------------------------------------
+
+export interface TestSpec {
+  key: string;
+  name: { fr: string; en: string };
+  shortName: { fr: string; en: string };
+  category: string;
+  description: { fr: string; en: string };
+  protocol: { fr: string; en: string };
+  equipment: { fr: string; en: string };
+  durationMin: number;
+  reference: string;
+  fields: Array<{
+    key: string;
+    label: { fr: string; en: string };
+    unit?: string;
+    type: string;
+    step?: number;
+    min?: number;
+    max?: number;
+    optional?: boolean;
+    help?: { fr: string; en: string };
+  }>;
+}
+
+export interface Catalog {
+  version: number;
+  categories: Record<string, { fr: string; en: string }>;
+  tests: TestSpec[];
+  batteries: Array<{
+    key: string;
+    name: { fr: string; en: string };
+    testKeys: string[];
+  }>;
+}
+
+/**
+ * Recupere le catalogue, ou garde celui deja stocke.
+ *
+ * Il ne change qu'une fois par an. L'empreinte evite de retelecharger cent
+ * kilo octets a chaque synchronisation, ce qui compte sur un forfait de
+ * terrain.
+ */
+export const syncCatalog = async (token: string): Promise<Catalog | null> => {
+  const etag = await getMeta(CATALOG_ETAG);
+  try {
+    const response = await request<Catalog>("/api/catalog", { token, etag });
+    if (response.notModified) return readCatalog();
+    await setMeta(CATALOG, JSON.stringify(response.data));
+    await setMeta(CATALOG_ETAG, response.etag ?? null);
+    return response.data;
+  } catch (error) {
+    if (error instanceof ApiError && error.isTransient) return readCatalog();
+    throw error;
+  }
+};
+
+export const readCatalog = async (): Promise<Catalog | null> => {
+  const raw = await getMeta(CATALOG);
+  return raw ? (JSON.parse(raw) as Catalog) : null;
+};
+
+// ---------------------------------------------------------------------------
+// Cycle complet
+// ---------------------------------------------------------------------------
+
+/**
+ * Une synchronisation complete.
+ *
+ * Renvoie un compte rendu, ou leve. L'appelant distingue les erreurs
+ * transitoires, qui ne demandent qu'a attendre le reseau, de la session
+ * invalide, qui impose un retour a l'ecran de connexion.
+ */
+export const runSync = async (token: string): Promise<SyncReport> => {
+  const { pushed, rejected } = await push(token);
+  const { pulled, rounds } = await pull(token);
+  await syncCatalog(token);
+  return { pushed, rejected, pulled, rounds };
+};
+
+export const lastSyncAt = async (): Promise<Date | null> => {
+  const value = await getMeta(LAST_SYNC);
+  return value ? new Date(value) : null;
+};

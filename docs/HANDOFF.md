@@ -1,6 +1,6 @@
 # Etat des lieux
 
-Derniere mise a jour : 18 aout 2026. Dernier commit : `99ea7fb`. Depuis, le repertoire de travail contient des modifications non commitees, decrites plus bas.
+Derniere mise a jour : 18 aout 2026. Dernier commit : `99ea7fb`. Depuis, le repertoire de travail contient des modifications non commitees, decrites plus bas, dont une application mobile entiere.
 
 ## Ou en est l'application
 
@@ -50,6 +50,35 @@ Refonte de la page publique, plus quatre points demandes avec.
 - **« 1 equipes »** au lieu de « 1 equipe ». Accord en nombre ajoute.
 - **Un auteur nomme « al. »** dans la bande des references, ne du decoupage de « Samozino et al. 2016 ». Filtre corrige.
 
+## Application mobile et API
+
+Ajoutees le 18 aout, apres la refonte de la page publique.
+
+**Une API JSON dans Next.js**, `src/app/api/` : `auth/login`, `auth/session`, `catalog`, et `sync`. Cinq routes seulement, parce qu'une application hors ligne d'abord ne demande jamais un ecran au serveur : elle descend des donnees et remonte des operations.
+
+**Le calcul des resultats est desormais partage** entre le site et l'API, dans `src/lib/tests/apply-results.ts`. `saveResultsAction` a fondu de 327 a 200 lignes en deleguant. Une formule corrigee vaut maintenant pour les deux chemins de saisie.
+
+**`src/lib/tests/validate-entries.ts`**, nouveau, rend l'API stricte sur les noms de champs et les bornes. Sur le site le formulaire les garantit, sur une API rien ne les garantit.
+
+**`mobile/`**, projet Expo SDK 57 avec React Native 0.86 : connexion par defaut, logo anime au lancement, base SQLite locale, file d'attente de synchronisation, deux langues, tableau de bord, equipes, effectif, fiche joueur, creation de passation et saisie de tests hors reseau.
+
+**Le logo** est nouveau : une courbe vitesse temps de sprint avec son point de mesure, dessinee par code dans `mobile/scripts/generate-assets.py`. Elle remplace l'icone Activity generique. Toutes les icones Android et le bandeau Google Play en decoulent.
+
+### Ce qui a ete verifie, et comment
+
+| Verification | Resultat |
+|---|---|
+| Connexion refusee, compte inconnu | messages identiques, aucune fuite sur l'existence du compte |
+| Cloisonnement des equipes | 7 comptes, 3 roles, chacun voit exactement ce qu'il doit |
+| Jeton de version revoquee | refuse en 401 |
+| Descente complete | 6127 lignes, **aucune perdue**, `npm run verify:sync` |
+| Remontee rejouee apres coupure | 1 passation, 3 resultats, **aucun doublon** |
+| Champ inexistant, valeur hors bornes, texte dans un nombre | les trois refuses |
+| Calcul serveur sur saisie mobile | 38,5 cm et 48,2 W/kg, valeurs coherentes |
+| Application mobile | typecheck vert, `expo-doctor` 21 sur 21, bundle Metro construit |
+
+Un defaut serieux a ete trouve et corrige en cours de route : le curseur de synchronisation ne portait qu'une date. PostgreSQL evalue `now()` une fois par instruction, donc les milliers de lignes d'un meme `createMany` partagent leur date : une page saturee au milieu d'un lot aurait saute le reste, en silence. Le curseur porte maintenant une date et un identifiant. `scripts/verify-sync.ts` existe pour que ce defaut ne revienne pas.
+
 ## Ce qui ne va pas
 
 **Aucun avis client publie, et c'est voulu.** `src/lib/testimonials.ts` est vide. Un temoignage invente est un motif de refus documente chez Stripe, tombe sous la directive europeenne 2019/2161 et sous la loi marocaine 31.08, et se repere immediatement par un preparateur physique. La page affiche a la place la preuve verifiable : nombre de tests, seize auteurs cites nommement, populations de reference. La section apparait toute seule des qu'une vraie entree est ajoutee. Le fichier explique comment obtenir ces avis et exige une date d'accord ecrit par entree.
@@ -68,6 +97,12 @@ Refonte de la page publique, plus quatre points demandes avec.
 
 **Modifications non commitees anterieures a cette session.** `git status` montre aussi des changements dans `src/app/actions/tests.ts`, `src/components/shell/app-shell.tsx`, `src/components/test-entry-grid.tsx`, `capacitor.config.ts`, et de nouveaux dossiers `src/lib/offline/` et `public/sw.js`. Ils ne viennent pas de cette session et n'ont pas ete touches.
 
+**L'application mobile n'a jamais tourne sur un appareil.** Cette machine n'a ni emulateur Android ni telephone connecte. Le code compile, le bundle se construit, les regles de la plateforme sont suivies, mais sept points demandent un vrai telephone. Ils sont listes a la fin de `docs/GOOGLE-PLAY.md`, et les deux qui comptent sont : une saisie faite en mode avion survit au redemarrage, et elle part seule au retour du reseau.
+
+**Le disque est presque plein.** 194 Go sur 224 au moment de l'installation, et `npm install` a echoue une premiere fois faute de place. `mobile/node_modules` pese pres d'un gigaoctet a lui seul.
+
+**Les captures d'ecran de la fiche Play restent a produire.** Elles demandent un appareil.
+
 ## A faire ensuite
 
 1. **Renseigner l'identite de l'entreprise** dans le `.env` du serveur. C'est le seul blocage dur pour Stripe.
@@ -76,3 +111,5 @@ Refonte de la page publique, plus quatre points demandes avec.
 4. **Commiter et deployer.** Aucune migration de base, le schema n'a pas bouge. L'APK n'est pas a reconstruire, la coque pointe vers le serveur.
 5. **Recolter les premiers avis** apres une saison complete, avec accord ecrit, puis remplir `src/lib/testimonials.ts`.
 6. Trancher le sort du chemin Docker et des comptes de demonstration.
+7. **Essayer l'application mobile sur un telephone**, avec `npx eas build --profile development`. C'est le seul moyen de valider le hors ligne.
+8. **Ouvrir le compte Google Play**, de preference en compte organisation : le compte personnel impose douze testeurs pendant quatorze jours. Voir `docs/GOOGLE-PLAY.md`.

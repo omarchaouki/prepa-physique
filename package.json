@@ -22,7 +22,8 @@
     "android:sync": "cap sync android",
     "android:apk": "node scripts/build-apk.mjs",
     "android:keystore": "node scripts/create-keystore.mjs",
-    "android:studio": "cap open android"
+    "android:studio": "cap open android",
+    "verify:sync": "tsx scripts/verify-sync.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

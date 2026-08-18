@@ -7,8 +7,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { canAccessTeam, logAudit, requireUser } from "@/lib/auth";
 import { getTest } from "@/lib/sports-science/catalog";
-import type { PlayerContext } from "@/lib/sports-science/types";
-import { ageExact } from "@/lib/utils";
+import { applyResults } from "@/lib/tests/apply-results";
 import type { ActionState } from "./auth";
 
 const createSessionSchema = z.object({
@@ -130,147 +129,20 @@ export async function saveResultsAction(payload: SaveResultsPayload): Promise<Sa
     return { ok: false, message: "Test inconnu.", saved: 0, skipped: 0, flags: [] };
   }
 
-  const playerIds = payload.entries.map((entry) => entry.playerId);
-  const players = await prisma.player.findMany({
-    where: { id: { in: playerIds }, teamId: session.teamId },
-  });
-  const playerMap = new Map(players.map((p) => [p.id, p]));
-
-  let saved = 0;
-  let skipped = 0;
-  const flags: SaveResultsResponse["flags"] = [];
-
-  for (const entry of payload.entries) {
-    const player = playerMap.get(entry.playerId);
-    if (!player) {
-      skipped += 1;
-      continue;
-    }
-
-    // Une ligne entierement vide signifie que le joueur n'a pas passe le test.
-    const filled = Object.entries(entry.values).filter(([, value]) => String(value).trim() !== "");
-    if (filled.length === 0) {
-      skipped += 1;
-      continue;
-    }
-
-    const raw: Record<string, number | string> = {};
-    for (const [key, value] of filled) {
-      const field = definition.fields.find((f) => f.key === key);
-      if (!field) continue;
-      raw[key] = field.type === "number" ? Number(value) : value;
-    }
-
-    // Les conditions declarees au niveau de la passation completent les lignes
-    // laissees vides, pour eviter de retaper la meme information a chaque joueur.
-    if (
-      session.temperatureC != null &&
-      raw.temperature === undefined &&
-      definition.fields.some((f) => f.key === "temperature")
-    ) {
-      raw.temperature = session.temperatureC;
-    }
-
-    const context: PlayerContext = {
-      bodyMassKg: player.weightKg ?? 75,
-      heightCm: player.heightCm ?? 178,
-      ageYears: ageExact(player.birthDate, session.date),
-      sex: (player.sex === "F" ? "F" : "M") as "M" | "F",
-      position: player.position,
-    };
-
-    let computed;
-    try {
-      computed = definition.compute(raw, context);
-    } catch {
-      skipped += 1;
-      continue;
-    }
-
-    if (computed.metrics.length === 0) {
-      skipped += 1;
-      continue;
-    }
-
-    // Une seule ligne de resultat par joueur, par test et par passation.
-    const existing = await prisma.testResult.findFirst({
-      where: { sessionId: session.id, playerId: player.id, testKey: payload.testKey },
-    });
-
-    const data = {
-      sessionId: session.id,
-      playerId: player.id,
+  // Le calcul et l'ecriture sont partages avec l'API mobile : voir
+  // src/lib/tests/apply-results.ts. Une formule corrigee doit valoir pour les
+  // deux chemins de saisie le meme jour, sinon la base contient deux verites.
+  const { saved, skipped, flags } = await applyResults({
+    session: {
+      id: session.id,
       teamId: session.teamId,
-      testKey: payload.testKey,
       date: session.date,
-      rawJson: JSON.stringify(raw),
-      computedJson: JSON.stringify({
-        summary: computed.summary,
-        flags: computed.flags,
-        details: computed.details,
-      }),
-      createdById: user.id,
-    };
-
-    const result = existing
-      ? await prisma.testResult.update({ where: { id: existing.id }, data })
-      : await prisma.testResult.create({ data });
-
-    // Les metriques derivees sont regenerees integralement.
-    await prisma.metric.deleteMany({ where: { testResultId: result.id } });
-    await prisma.metric.createMany({
-      data: computed.metrics.map((metric) => ({
-        playerId: player.id,
-        teamId: session.teamId,
-        testResultId: result.id,
-        key: metric.key,
-        value: metric.value,
-        unit: metric.unit,
-        date: session.date,
-        side: metric.side ?? null,
-        source: "TEST",
-      })),
-    });
-
-    // La taille et la masse mesurees mettent a jour la fiche du joueur, car
-    // elles servent de contexte a tous les autres calculs.
-    if (payload.testKey === "anthropometry") {
-      await prisma.player.update({
-        where: { id: player.id },
-        data: {
-          heightCm: typeof raw.height === "number" ? raw.height : player.heightCm,
-          weightKg: typeof raw.weight === "number" ? raw.weight : player.weightKg,
-        },
-      });
-      await prisma.anthropometry.create({
-        data: {
-          playerId: player.id,
-          date: session.date,
-          heightCm: Number(raw.height ?? player.heightCm ?? 0),
-          weightKg: Number(raw.weight ?? player.weightKg ?? 0),
-          sittingHeightCm: raw.sittingHeight != null ? Number(raw.sittingHeight) : null,
-          bodyFatPct:
-            computed.metrics.find((m) => m.key === "body_fat")?.value ?? null,
-          maturityOffset:
-            computed.metrics.find((m) => m.key === "maturity_offset")?.value ?? null,
-          aphvYears: computed.metrics.find((m) => m.key === "aphv")?.value ?? null,
-          pctAdultHeight:
-            computed.metrics.find((m) => m.key === "pct_adult_height")?.value ?? null,
-          motherHeightCm: raw.motherHeight != null ? Number(raw.motherHeight) : null,
-          fatherHeightCm: raw.fatherHeight != null ? Number(raw.fatherHeight) : null,
-        },
-      });
-    }
-
-    if (computed.flags.length > 0) {
-      flags.push({
-        playerName: `${player.firstName} ${player.lastName}`,
-        messages: computed.flags,
-      });
-    }
-
-    saved += 1;
-  }
+      temperatureC: session.temperatureC,
+    },
+    testKey: payload.testKey,
+    entries: payload.entries,
+    authorId: user.id,
+  });
 
   await logAudit({
     userId: user.id,

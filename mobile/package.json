@@ -1,0 +1,41 @@
+{
+  "name": "lamsaa-mobile",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "dependencies": {
+    "@react-native-community/netinfo": "12.0.1",
+    "expo": "~57.0.14",
+    "expo-constants": "~57.0.12",
+    "expo-crypto": "~57.0.1",
+    "expo-linking": "~57.0.6",
+    "expo-localization": "~57.0.1",
+    "expo-router": "~57.0.14",
+    "expo-secure-store": "~57.0.1",
+    "expo-splash-screen": "~57.0.7",
+    "expo-sqlite": "~57.0.1",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-web": "^0.21.2"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "assets": "python scripts/generate-assets.py",
+    "typecheck": "tsc --noEmit",
+    "doctor": "npx expo-doctor",
+    "build:preview": "eas build --platform android --profile preview",
+    "build:play": "eas build --platform android --profile production",
+    "submit": "eas submit --platform android --profile production"
+  },
+  "private": true
+}

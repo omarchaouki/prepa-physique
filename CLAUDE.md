@@ -110,6 +110,29 @@ conditions de resiliation, la politique de remboursement, la confidentialite,
 l'identite de l'entreprise, et un service client joignable. Les quatre pages
 sont sous `/legal` et liees depuis le pied de page.
 
+## Application mobile
+
+`mobile/`, projet Expo separe avec son propre `package.json`. React Native, SDK 57.
+
+- **Elle parle a l'API, jamais a Prisma.** Les routes sont sous `src/app/api/` :
+  connexion, session, catalogue, et `sync` en descente et remontee. Toute
+  nouvelle donnee sur le telephone passe par `sync`, pas par une route dediee.
+- **Aucun ecran n'appelle le reseau pour s'afficher.** Tous lisent la base
+  SQLite locale, que la synchronisation met a jour en arriere plan.
+- **Le telephone ne calcule aucune formule scientifique.** Il envoie des valeurs
+  brutes, le serveur derive les metriques. Dupliquer le moteur creerait deux
+  verites le jour d'une correction.
+- **Les identifiants des passations sont generes sur le telephone.** C'est ce
+  qui rend la remontee idempotente : le serveur fait un `upsert`, donc un renvoi
+  apres coupure ne cree pas de doublon.
+- **Le curseur de synchronisation porte une date et un identifiant.** PostgreSQL
+  donne la meme date a toutes les lignes d'un `createMany` ; un curseur reduit a
+  la date sauterait des lignes en silence. `npm run verify:sync` le controle.
+- Verification : `npm run typecheck`, `npx expo-doctor`, et `npx expo export`
+  qui construit reellement le bundle. Les trois doivent passer.
+- Les versions des modules Expo se posent avec `npx expo install`, jamais a la
+  main : celles ecrites de memoire n'existent pas.
+
 ## Contraintes fermes
 
 **L'APK ne se reconstruit pas pour une modification de l'application.** C'est une coque Capacitor qui pointe vers `APP_URL` ; tout le contenu vient du serveur. Un simple redeploiement suffit, les telephones recoivent la mise a jour au rechargement. L'APK se reconstruit uniquement si l'`appId`, le nom, l'icone, l'ecran de lancement, la page hors ligne ou l'adresse du serveur changent :

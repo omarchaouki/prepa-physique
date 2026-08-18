@@ -1,0 +1,14 @@
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+
+# Cle du compte de service Google Play. Elle donne le droit de publier sous
+# votre nom : elle ne doit jamais entrer dans le depot.
+play-service-account.json
+*.keystore
+*.jks
+
+# Les icones sont regenerees par scripts/generate-assets.py, mais elles sont
+# versionnees pour qu'une compilation EAS n'ait pas besoin de Python.
