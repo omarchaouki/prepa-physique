@@ -106,6 +106,33 @@ export const resolvePlan = (value: string | null | undefined): Plan => {
 
 export const planLimits = (value: string | null | undefined) => PLAN_LIMITS[resolvePlan(value)];
 
+/**
+ * Fonctions proposees a l'inscription.
+ *
+ * Volontairement courtes et reconnaissables : une liste de vingt intitules
+ * oblige a chercher le sien, et la moitie des gens finit par prendre « Autre ».
+ * `OTHER` ouvre un champ libre, ce qui permet d'apprendre les fonctions qui
+ * manquent au lieu de les deviner.
+ */
+export const JOB_TITLES = [
+  "COACH",
+  "STRENGTH_COACH",
+  "DIRECTOR",
+  "ANALYST",
+  "MEDICAL",
+  "OTHER",
+] as const;
+export type JobTitle = (typeof JOB_TITLES)[number];
+
+export const JOB_TITLE_LABELS: Record<JobTitle, I18nText> = {
+  COACH: { fr: "Entraineur", en: "Head coach" },
+  STRENGTH_COACH: { fr: "Preparateur physique", en: "Strength and conditioning coach" },
+  DIRECTOR: { fr: "Directeur sportif", en: "Sporting director" },
+  ANALYST: { fr: "Analyste", en: "Performance analyst" },
+  MEDICAL: { fr: "Staff medical", en: "Medical staff" },
+  OTHER: { fr: "Autre", en: "Other" },
+};
+
 export const SESSION_COOKIE = "pp_session";
 export const LOCALE_COOKIE = "pp_locale";
 export const CURRENCY_COOKIE = "pp_currency";

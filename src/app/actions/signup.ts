@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/db";
 import { hashPassword, logAudit, requestIp, setSessionCookie, signSession } from "@/lib/auth";
-import { PLAN_LIMITS } from "@/lib/constants";
+import { JOB_TITLES, JOB_TITLE_LABELS, PLAN_LIMITS, type JobTitle } from "@/lib/constants";
 import { slugify } from "@/lib/utils";
 import type { ActionState } from "./auth";
 
@@ -55,7 +55,11 @@ const schema = z
       .min(10, "Le mot de passe doit contenir au moins dix caracteres")
       .max(200),
     confirm: z.string(),
-    country: z.string().trim().max(60).optional(),
+    /** Code ISO du pays, choisi dans la liste et non tape librement. */
+    country: z.string().trim().length(2).optional().or(z.literal("")),
+    jobTitle: z.enum(JOB_TITLES).optional().or(z.literal("")),
+    jobTitleOther: z.string().trim().max(80).optional(),
+    phone: z.string().trim().max(30).optional(),
     /** Champ leurre : un humain ne le voit pas, donc ne le remplit pas. */
     website: z.string().max(0, "Inscription refusee").optional(),
   })
@@ -117,6 +121,9 @@ export async function signUpAction(
     password: String(formData.get("password") ?? ""),
     confirm: String(formData.get("confirm") ?? ""),
     country: String(formData.get("country") ?? ""),
+    jobTitle: String(formData.get("jobTitle") ?? ""),
+    jobTitleOther: String(formData.get("jobTitleOther") ?? ""),
+    phone: String(formData.get("phone") ?? ""),
     website: String(formData.get("website") ?? ""),
   });
 
@@ -124,7 +131,17 @@ export async function signUpAction(
     return { error: parsed.error.issues[0]?.message ?? "Donnees invalides" };
   }
 
-  const { club, name, email, password, country } = parsed.data;
+  const { club, name, email, password, country, phone } = parsed.data;
+
+  // La fonction est enregistree en clair et en francais : elle sert a
+  // comprendre qui utilise le produit, pas a piloter des droits. Une valeur
+  // libre est donc acceptable la ou un code ne le serait pas.
+  const jobTitle =
+    parsed.data.jobTitle === "OTHER"
+      ? parsed.data.jobTitleOther?.trim() || null
+      : parsed.data.jobTitle
+        ? JOB_TITLE_LABELS[parsed.data.jobTitle as JobTitle].fr
+        : null;
 
   const domain = email.split("@")[1] ?? "";
   if (DISPOSABLE.has(domain)) {
@@ -175,6 +192,8 @@ export async function signUpAction(
         role: "CLUB_ADMIN",
         organizationId: organization.id,
         locale: "fr",
+        jobTitle,
+        phone: phone || null,
       },
     });
 
