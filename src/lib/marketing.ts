@@ -60,36 +60,64 @@ export const COMPANY = {
 } as const;
 
 /**
- * Tarifs mensuels, hors taxes, en euro.
+ * Devises proposees au visiteur.
  *
- * A CONFIRMER PAR OMAR. Ces montants sont un point de depart credible pour le
- * marche vise, pas une decision commerciale : une plateforme de preparation
- * physique se vend entre trente et deux cent cinquante euros par mois selon le
- * nombre d'equipes suivies. Corriger ici suffit, la page et les pages legales
- * lisent toutes cette table.
- *
- * `null` veut dire sur devis, et la page affiche alors un bouton de contact a
- * la place d'un montant.
+ * Deux prix ecrits en dur, jamais une conversion a la volee. Un taux de change
+ * qui bouge ferait varier le prix affiche d'un jour a l'autre, ce qui est
+ * illisible pour le client et intenable pour la facturation. Chaque montant est
+ * une decision commerciale, pas le resultat d'un calcul.
  */
-export const PRICING: Record<Plan, { monthlyEur: number | null; highlight: boolean }> = {
-  TRIAL: { monthlyEur: 0, highlight: false },
-  STARTER: { monthlyEur: 39, highlight: false },
-  PRO: { monthlyEur: 99, highlight: true },
-  ELITE: { monthlyEur: 249, highlight: false },
+export const CURRENCIES = ["MAD", "EUR"] as const;
+export type Currency = (typeof CURRENCIES)[number];
+
+export const CURRENCY_LABELS: Record<Currency, { code: string; name: { fr: string; en: string } }> = {
+  MAD: { code: "DH", name: { fr: "Dirham marocain", en: "Moroccan dirham" } },
+  EUR: { code: "EUR", name: { fr: "Euro", en: "Euro" } },
 };
 
-/** Duree de l'essai gratuit, en jours. Reprise telle quelle dans les conditions. */
-export const TRIAL_DAYS = 14;
+/** Devise proposee par defaut selon la langue lue. */
+export const defaultCurrency = (locale: "fr" | "en"): Currency => (locale === "fr" ? "MAD" : "EUR");
+
+/**
+ * Tarifs mensuels, hors taxes.
+ *
+ * `null` veut dire sur devis, et la page affiche alors un bouton de contact a
+ * la place d'un montant. Zero veut dire gratuit, sans date de fin.
+ *
+ * A CONFIRMER PAR OMAR. Les montants en dirham suivent des paliers ronds du
+ * marche local plutot que la conversion stricte de l'euro : c'est un choix
+ * commercial, pas une erreur d'arrondi.
+ */
+export const PRICING: Record<Plan, { monthly: Record<Currency, number | null>; highlight: boolean }> = {
+  FREE: { monthly: { MAD: 0, EUR: 0 }, highlight: false },
+  STARTER: { monthly: { MAD: 399, EUR: 39 }, highlight: false },
+  PRO: { monthly: { MAD: 999, EUR: 99 }, highlight: true },
+  ELITE: { monthly: { MAD: 2499, EUR: 249 }, highlight: false },
+};
 
 /** Delai de reponse annonce au visiteur, en heures ouvrees. */
 export const RESPONSE_HOURS = 24;
 
-export const formatPrice = (amount: number, locale: "fr" | "en"): string =>
-  new Intl.NumberFormat(locale === "en" ? "en-GB" : "fr-FR", {
+/**
+ * Met un montant en forme dans la devise demandee.
+ *
+ * Le dirham est ecrit avec son sigle usuel plutot qu'avec le code ISO : un
+ * client marocain lit « 399 DH », pas « 399 MAD ». `Intl` produit la seconde
+ * forme, on la remplace donc.
+ */
+export const formatPrice = (
+  amount: number,
+  currency: Currency,
+  locale: "fr" | "en",
+): string => {
+  const formatted = new Intl.NumberFormat(locale === "en" ? "en-GB" : "fr-FR", {
     style: "currency",
-    currency: "EUR",
+    currency,
     maximumFractionDigits: 0,
   }).format(amount);
+
+  return currency === "MAD" ? formatted.replace(/MAD\s?/u, "").trim() + " DH" : formatted;
+};
 
 export const mailtoSales = (subject: string): string =>
   `mailto:${CONTACT.sales}?subject=${encodeURIComponent(subject)}`;

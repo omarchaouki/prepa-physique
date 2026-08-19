@@ -86,7 +86,7 @@ export function CreateOrganizationForm({ plans }: { plans: string[] }) {
         <label className="label" htmlFor="org-plan">
           {t("admin.plan")}
         </label>
-        <select id="org-plan" name="plan" className="field cursor-pointer" defaultValue="TRIAL">
+        <select id="org-plan" name="plan" className="field cursor-pointer" defaultValue="FREE">
           {plans.map((plan) => (
             <option key={plan} value={plan}>
               {plan}

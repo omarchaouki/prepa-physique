@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
-import { CONTACT, TRIAL_DAYS } from "@/lib/marketing";
+import { CONTACT } from "@/lib/marketing";
+import { PLAN_LIMITS } from "@/lib/constants";
 import { getLocale } from "@/lib/i18n/server";
 import { LegalPage, type LegalSection } from "@/components/marketing/legal-page";
 
@@ -29,15 +30,15 @@ export default async function RefundPage() {
 
   const sections: LegalSection[] = [
     {
-      heading: { fr: "Essayer avant de payer", en: "Try before paying" },
+      heading: { fr: "Essayer sans payer, sans limite", en: "Try without paying, with no limit" },
       paragraphs: [
         {
-          fr: `L'essai dure ${TRIAL_DAYS} jours et ne demande aucune carte bancaire. Rien n'est preleve a son terme : si vous ne choisissez pas de formule payante, il ne se passe simplement rien.`,
-          en: `The trial lasts ${TRIAL_DAYS} days and requires no card. Nothing is charged when it ends: if you do not pick a paid plan, nothing simply happens.`,
+          fr: `Le forfait gratuit couvre ${PLAN_LIMITS.FREE.maxPlayers} joueurs et n'a pas de date de fin. Aucune carte bancaire n'est demandee a l'inscription, et rien ne se declenche tout seul : tant que vous restez sous ce plafond, vous ne payez jamais.`,
+          en: `The free plan covers ${PLAN_LIMITS.FREE.maxPlayers} players and has no end date. No card is required to sign up, and nothing starts on its own: as long as you stay under that limit, you never pay.`,
         },
         {
-          fr: "C'est le moyen le plus sur de verifier que la plateforme vous convient, et il rend la plupart des demandes de remboursement inutiles.",
-          en: "This is the safest way to check the platform suits you, and it makes most refund requests unnecessary.",
+          fr: "C'est le moyen le plus sur de verifier que la plateforme vous convient, avec votre propre effectif et sur une saison entiere si vous le souhaitez. Il rend la plupart des demandes de remboursement inutiles.",
+          en: "This is the safest way to check the platform suits you, with your own squad and over a whole season if you wish. It makes most refund requests unnecessary.",
         },
       ],
     },

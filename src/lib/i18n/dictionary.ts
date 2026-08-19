@@ -992,6 +992,48 @@ export const MESSAGES = {
   "chart.gap": ["Ecart", "Gap"],
   "chart.percentileSuffix": ["e percentile", "th percentile"],
 
+  // --- Inscription publique -------------------------------------------------
+  "signup.title": ["Creer votre club", "Create your club"],
+  "signup.subtitle": [
+    "Trente joueurs gratuits, sans limite de duree et sans carte bancaire.",
+    "Thirty players free, with no time limit and no card.",
+  ],
+  "signup.club": ["Nom du club", "Club name"],
+  "signup.clubHint": [
+    "Celui que verront les membres de votre staff.",
+    "The name your staff will see.",
+  ],
+  "signup.name": ["Votre nom", "Your name"],
+  "signup.email": ["Adresse de courriel", "Email address"],
+  "signup.emailHint": [
+    "Elle servira a vous connecter.",
+    "You will use it to sign in.",
+  ],
+  "signup.country": ["Pays", "Country"],
+  "signup.password": ["Mot de passe", "Password"],
+  "signup.passwordHint": ["Dix caracteres au minimum.", "Ten characters minimum."],
+  "signup.confirm": ["Confirmer le mot de passe", "Confirm password"],
+  "signup.submit": ["Creer mon club", "Create my club"],
+  "signup.pending": ["Creation", "Creating"],
+  "signup.haveAccount": ["Vous avez deja un compte ?", "Already have an account?"],
+  "signup.signIn": ["Se connecter", "Sign in"],
+  "signup.noAccount": ["Pas encore de compte ?", "No account yet?"],
+  "signup.cta": ["Creer un club gratuitement", "Create a club for free"],
+  "signup.ctaShort": ["Commencer gratuitement", "Start for free"],
+  "signup.terms": [
+    "En creant votre club vous acceptez les conditions generales et la politique de confidentialite.",
+    "By creating your club you accept the terms of service and the privacy policy.",
+  ],
+  "signup.included1": [
+    "Trente joueurs, une equipe, sans limite de duree",
+    "Thirty players, one team, no time limit",
+  ],
+  "signup.included2": [
+    "Les vingt deux tests et toutes les analyses",
+    "All twenty two tests and every analysis",
+  ],
+  "signup.included3": ["Aucune carte bancaire demandee", "No card required"],
+
   // --- Page publique --------------------------------------------------------
   // Seule zone de l'application adressee a un visiteur qui ne connait pas le
   // produit. Le ton y est commercial, mais aucune affirmation n'y est inventee :
@@ -1018,8 +1060,8 @@ export const MESSAGES = {
     "Your squad's physical condition, quantified, compared against published norms, and explained on one page per player.",
   ],
   "home.heroNote": [
-    "Essai de {days} jours. Aucune carte bancaire demandee.",
-    "{days} day trial. No card required.",
+    "Trente joueurs gratuits, sans limite de duree. Aucune carte bancaire.",
+    "Thirty players free, with no time limit. No card.",
   ],
   "home.heroImageAlt": [
     "Seance de tests physiques sur un terrain de football",
@@ -1161,10 +1203,13 @@ export const MESSAGES = {
   "home.plansPlayer": ["joueur", "player"],
   "home.plansPlayers": ["joueurs", "players"],
   "home.plansFree": ["Gratuit", "Free"],
+  "home.plansForever": ["pour toujours", "forever"],
+  "home.plansCurrency": ["Devise", "Currency"],
   "home.plansTrialDays": ["{days} jours", "{days} days"],
   "home.plansQuote": ["Sur devis", "On request"],
   "home.plansPopular": ["Le plus choisi", "Most chosen"],
   "home.plansChoose": ["Choisir", "Choose"],
+  "home.plansStart": ["Commencer", "Start"],
   "home.plansAllIncluded": [
     "Toutes les formules donnent acces aux {count} tests, aux normes, aux recommandations et a l'application Android. Le forfait ne limite que le nombre d'equipes et de joueurs suivis.",
     "Every plan includes all {count} tests, the norms, the recommendations and the Android app. The plan limits only how many teams and players you track.",
@@ -1179,8 +1224,8 @@ export const MESSAGES = {
   "home.faqTitle": ["Questions", "Questions"],
   "home.faq1Q": ["Comment se passe la facturation ?", "How does billing work?"],
   "home.faq1A": [
-    "Vous etes preleve chaque mois, le jour de votre souscription, par carte bancaire. La facture arrive par courriel le meme jour. Les montants annonces sont hors taxes.",
-    "You are charged monthly, on your signup date, by card. The invoice arrives by email the same day. Prices shown exclude VAT.",
+    "Le forfait gratuit ne se facture jamais, quelle que soit la duree. Sur une formule payante, vous etes preleve chaque mois par carte bancaire, le jour de votre souscription, dans la devise choisie a ce moment la. La facture arrive par courriel le meme jour. Les montants annonces sont hors taxes.",
+    "The free plan is never billed, however long you stay on it. On a paid plan you are charged monthly by card, on your signup date, in the currency chosen then. The invoice arrives by email the same day. Prices shown exclude VAT.",
   ],
   "home.faq2Q": ["Puis je arreter quand je veux ?", "Can I stop whenever I want?"],
   "home.faq2A": [
@@ -1189,8 +1234,8 @@ export const MESSAGES = {
   ],
   "home.faq3Q": ["Et si je ne suis pas satisfait ?", "What if I am not satisfied?"],
   "home.faq3A": [
-    "L'essai de {days} jours existe pour repondre a cette question avant tout paiement. Passe ce delai, tout mois entame vous est rembourse integralement si vous en faites la demande dans les quatorze jours suivant le prelevement.",
-    "The {days} day trial exists to answer that before any payment. After it, any started month is refunded in full if you ask within fourteen days of the charge.",
+    "Le forfait gratuit repond a cette question avant tout paiement, et sans limite de temps : vous pouvez suivre trente joueurs sur une saison entiere sans rien payer. Une fois passe a une formule payante, tout mois entame vous est rembourse integralement si vous en faites la demande dans les quatorze jours suivant le prelevement.",
+    "The free plan answers that before any payment, with no time limit: you can track thirty players over a whole season without paying. Once on a paid plan, any started month is refunded in full if you ask within fourteen days of the charge.",
   ],
   "home.faq4Q": ["A qui appartiennent mes donnees ?", "Who owns my data?"],
   "home.faq4A": [

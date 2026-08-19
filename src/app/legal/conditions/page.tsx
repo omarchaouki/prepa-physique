@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { COMPANY, CONTACT, PRICING, TRIAL_DAYS, formatPrice, orBlank } from "@/lib/marketing";
+import { COMPANY, CONTACT, PRICING, formatPrice, orBlank } from "@/lib/marketing";
 import { PLAN_LIMITS } from "@/lib/constants";
 import { getLocale } from "@/lib/i18n/server";
 import { LegalPage, type LegalSection } from "@/components/marketing/legal-page";
@@ -45,11 +45,18 @@ export default async function TermsPage() {
     locale,
   );
 
-  const starter = PRICING.STARTER.monthlyEur;
-  const elite = PRICING.ELITE.monthlyEur;
-  const range =
-    starter !== null && elite !== null
-      ? `${formatPrice(starter, locale)} ${locale === "en" ? "to" : "a"} ${formatPrice(elite, locale)}`
+  // Les conditions citent les deux devises : le contrat doit valoir pour un
+  // club marocain comme pour un club europeen.
+  const starter = PRICING.STARTER.monthly;
+  const elite = PRICING.ELITE.monthly;
+  const between = locale === "en" ? "to" : "a";
+  const rangeMad =
+    starter.MAD !== null && elite.MAD !== null
+      ? `${formatPrice(starter.MAD, "MAD", locale)} ${between} ${formatPrice(elite.MAD, "MAD", locale)}`
+      : "";
+  const rangeEur =
+    starter.EUR !== null && elite.EUR !== null
+      ? `${formatPrice(starter.EUR, "EUR", locale)} ${between} ${formatPrice(elite.EUR, "EUR", locale)}`
       : "";
 
   const sections: LegalSection[] = [
@@ -102,8 +109,8 @@ export default async function TermsPage() {
       ],
       bullets: [
         {
-          fr: `Essai : ${PLAN_LIMITS.TRIAL.maxTeams} equipe et ${PLAN_LIMITS.TRIAL.maxPlayers} joueurs.`,
-          en: `Trial: ${PLAN_LIMITS.TRIAL.maxTeams} team and ${PLAN_LIMITS.TRIAL.maxPlayers} players.`,
+          fr: `Gratuit : ${PLAN_LIMITS.FREE.maxTeams} equipe et ${PLAN_LIMITS.FREE.maxPlayers} joueurs, sans limite de duree.`,
+          en: `Free: ${PLAN_LIMITS.FREE.maxTeams} team and ${PLAN_LIMITS.FREE.maxPlayers} players, with no time limit.`,
         },
         {
           fr: `Starter : ${PLAN_LIMITS.STARTER.maxTeams} equipes et ${PLAN_LIMITS.STARTER.maxPlayers} joueurs.`,
@@ -123,8 +130,8 @@ export default async function TermsPage() {
       heading: { fr: "Prix et paiement", en: "Price and payment" },
       paragraphs: [
         {
-          fr: `Les tarifs sont exprimes en euro et hors taxes, de ${range} par mois selon la formule. Les montants applicables sont ceux affiches sur la page des tarifs le jour de la souscription.`,
-          en: `Prices are stated in euro excluding VAT, from ${range} per month depending on the plan. The applicable amounts are those shown on the pricing page on the day of subscription.`,
+          fr: `Les tarifs sont hors taxes, de ${rangeMad} par mois en dirham, ou de ${rangeEur} par mois en euro, selon la formule. La devise est choisie a la souscription et ne change plus ensuite. Les montants applicables sont ceux affiches sur la page des tarifs le jour de la souscription.`,
+          en: `Prices exclude VAT, from ${rangeMad} per month in dirham, or ${rangeEur} per month in euro, depending on the plan. The currency is chosen at subscription and does not change afterwards. The applicable amounts are those shown on the pricing page on the day of subscription.`,
         },
         {
           fr: "L'abonnement est preleve par carte bancaire, chaque mois, a la date anniversaire de la souscription. La facture est envoyee par courriel le jour du prelevement.",
@@ -141,11 +148,15 @@ export default async function TermsPage() {
       ],
     },
     {
-      heading: { fr: "Essai gratuit", en: "Free trial" },
+      heading: { fr: "Le forfait gratuit", en: "The free plan" },
       paragraphs: [
         {
-          fr: `L'essai dure ${TRIAL_DAYS} jours et ne demande aucune carte bancaire. A son terme, aucun prelevement n'a lieu : le compte reste consultable jusqu'au choix d'une formule payante.`,
-          en: `The trial lasts ${TRIAL_DAYS} days and requires no card. At its end nothing is charged: the account stays readable until a paid plan is chosen.`,
+          fr: `Le forfait gratuit n'a pas de date de fin. Il permet de suivre ${PLAN_LIMITS.FREE.maxPlayers} joueurs dans ${PLAN_LIMITS.FREE.maxTeams} equipe, avec acces a tous les tests et a toutes les analyses. Aucune carte bancaire n'est demandee a l'inscription.`,
+          en: `The free plan has no end date. It covers ${PLAN_LIMITS.FREE.maxPlayers} players in ${PLAN_LIMITS.FREE.maxTeams} team, with access to every test and every analysis. No card is required to sign up.`,
+        },
+        {
+          fr: "Au dela de ce plafond, l'ajout d'un joueur supplementaire demande le passage a une formule payante. Les donnees deja enregistrees restent accessibles et ne sont jamais supprimees du fait d'avoir atteint la limite.",
+          en: "Beyond that limit, adding another player requires moving to a paid plan. Data already recorded stays accessible and is never deleted for having reached the limit.",
         },
       ],
     },

@@ -55,7 +55,11 @@ Regles suivies :
 
 **Couleurs.** Uniquement des variables CSS (`var(--text-muted)`, `var(--danger-soft)`). Aucun hexadecimal dans un composant, sinon le theme sombre casse.
 
-**Plans.** Les plafonds (`maxPlayers`, `maxTeams`) appartiennent au proprietaire. Un client ne releve jamais ses propres limites, et un depassement renvoie un message explicite, pas un echec silencieux.
+**Plans.** Les plafonds (`maxPlayers`, `maxTeams`) appartiennent au proprietaire. Un client ne releve jamais ses propres limites, et un depassement renvoie un message explicite, pas un echec silencieux. Le forfait `FREE` n'a pas de date de fin : trente joueurs, une equipe, pour toujours. Les clubs crees avant ce changement portent encore la valeur `TRIAL` en base : toute lecture passe par `resolvePlan`, jamais par la chaine stockee.
+
+**Devises.** Deux prix ecrits en dur dans `PRICING`, dirham et euro, jamais une conversion a la volee : un taux qui bouge ferait varier le prix affiche d'un jour a l'autre. `formatPrice` prend la devise en argument. Le choix du visiteur vit dans un cookie, lu par `getCurrency` dans `src/lib/currency-server.ts`.
+
+**Inscription publique.** `/inscription` cree un club au forfait gratuit et son administrateur, en une transaction, puis connecte. Il n'y a pas de verification par courriel, c'est un choix assume pour la conversion : la protection repose sur une limite par adresse IP, un refus des adresses jetables et un champ leurre. Consequence a assumer, il faudra nettoyer de faux comptes de temps en temps.
 
 ## Pieges
 

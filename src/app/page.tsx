@@ -10,7 +10,6 @@ import {
   PRICING,
   PROOF,
   RESPONSE_HOURS,
-  TRIAL_DAYS,
   formatPrice,
   mailtoSales,
   mailtoSupport,
@@ -23,6 +22,8 @@ import { getLocale, getT, pick } from "@/lib/i18n/server";
 import type { Locale } from "@/lib/i18n/dictionary";
 import { LanguageSwitcher } from "@/components/shell/language-switcher";
 import { Wordmark } from "@/components/marketing/wordmark";
+import { CurrencySwitcher } from "@/components/marketing/currency-switcher";
+import { getCurrency } from "@/lib/currency-server";
 
 /**
  * Page publique.
@@ -168,7 +169,12 @@ function Stars({ rating }: { rating: number }) {
 // ---------------------------------------------------------------------------
 
 export default async function HomePage() {
-  const [user, locale, t] = await Promise.all([getCurrentUser(), getLocale(), getT()]);
+  const [user, locale, t, currency] = await Promise.all([
+    getCurrentUser(),
+    getLocale(),
+    getT(),
+    getCurrency(),
+  ]);
 
   const brand = CONTACT.brand;
   const demoLink = mailtoSales(t("home.demoSubject"));
@@ -227,9 +233,9 @@ export default async function HomePage() {
   ];
 
   const faq = [
-    { q: t("home.faq1Q"), a: fill(t("home.faq1A"), { days: TRIAL_DAYS }) },
+    { q: t("home.faq1Q"), a: t("home.faq1A") },
     { q: t("home.faq2Q"), a: t("home.faq2A") },
-    { q: t("home.faq3Q"), a: fill(t("home.faq3A"), { days: TRIAL_DAYS }) },
+    { q: t("home.faq3Q"), a: t("home.faq3A") },
     { q: t("home.faq4Q"), a: t("home.faq4A") },
     { q: t("home.faq5Q"), a: t("home.faq5A") },
     { q: t("home.faq6Q"), a: t("home.faq6A") },
@@ -297,10 +303,14 @@ export default async function HomePage() {
                 contre l'utilitaire `hidden` de Tailwind, qui est dans la couche
                 utilities, et le bouton resterait affiche sur telephone en
                 debordant l'ecran de quatre vingt douze pixels. */}
+            {/* L'inscription est l'action principale depuis qu'un palier
+                gratuit existe : elle ne demande ni carte ni rendez vous. La
+                demonstration reste accessible plus bas dans la page, pour les
+                clubs qui veulent parler a quelqu'un avant. */}
             <span className="hidden sm:inline-flex">
-              <a href={demoLink} className="btn btn-primary" style={{ minHeight: "2.75rem" }}>
-                {t("home.navDemo")}
-              </a>
+              <Link href="/inscription" className="btn btn-primary" style={{ minHeight: "2.75rem" }}>
+                {t("signup.ctaShort")}
+              </Link>
             </span>
           </div>
         </div>
@@ -340,12 +350,12 @@ export default async function HomePage() {
                 className="rise flex flex-wrap items-center gap-3 mt-8"
                 style={{ ["--d" as string]: "220ms" }}
               >
-                <a href={demoLink} className="btn btn-primary btn-lg">
-                  {t("home.navDemo")}
+                <Link href="/inscription" className="btn btn-primary btn-lg">
+                  {t("signup.cta")}
                   <ArrowRight size={16} aria-hidden="true" />
-                </a>
-                <a href="#science" className="btn btn-secondary btn-lg">
-                  {t("home.navScience")}
+                </Link>
+                <a href={demoLink} className="btn btn-secondary btn-lg">
+                  {t("home.navDemo")}
                 </a>
               </div>
 
@@ -353,7 +363,7 @@ export default async function HomePage() {
                 className="rise text-[0.8125rem] mt-4"
                 style={{ color: "var(--text-muted)", ["--d" as string]: "300ms" }}
               >
-                {fill(t("home.heroNote"), { days: TRIAL_DAYS })}
+                {t("home.heroNote")}
               </p>
             </div>
 
@@ -702,24 +712,41 @@ export default async function HomePage() {
         {/* Tarifs                                                            */}
         {/* ---------------------------------------------------------------- */}
         <section id="tarifs" className="anchor-offset mx-auto max-w-6xl px-5 py-16 sm:py-20">
-          <div className="reveal max-w-2xl mb-10">
-            <Eyebrow>{t("home.navPlans")}</Eyebrow>
-            <h2 className="display-sm" style={{ fontSize: "clamp(1.75rem, 4.2vw, 2.5rem)" }}>
-              {t("home.plansTitle")}
-            </h2>
-            <p
-              className="mt-4 text-[1rem] leading-relaxed"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {t("home.plansSubtitle")}
-            </p>
+          <div className="reveal flex flex-wrap items-end justify-between gap-5 mb-10">
+            <div className="max-w-2xl">
+              <Eyebrow>{t("home.navPlans")}</Eyebrow>
+              <h2 className="display-sm" style={{ fontSize: "clamp(1.75rem, 4.2vw, 2.5rem)" }}>
+                {t("home.plansTitle")}
+              </h2>
+              <p
+                className="mt-4 text-[1rem] leading-relaxed"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                {t("home.plansSubtitle")}
+              </p>
+            </div>
+
+            {/* Le choix de devise se tient a hauteur du titre des tarifs, pas
+                dans un menu. Un visiteur marocain qui voit un prix en euro se
+                demande d'abord si le produit lui est destine, et la reponse
+                doit tenir dans le meme coup d'oeil que la question. */}
+            <div className="shrink-0">
+              <p
+                className="text-[0.6875rem] font-semibold uppercase tracking-[0.12em] mb-1.5"
+                style={{ color: "var(--text-muted)" }}
+              >
+                {t("home.plansCurrency")}
+              </p>
+              <CurrencySwitcher current={currency} locale={locale} />
+            </div>
           </div>
 
           <div className="reveal">
             {PLANS.map((plan) => {
               const limits = PLAN_LIMITS[plan];
               const price = PRICING[plan];
-              const isTrial = plan === "TRIAL";
+              const amount = price.monthly[currency];
+              const isFree = amount === 0;
 
               return (
                 <div key={plan}>
@@ -767,11 +794,11 @@ export default async function HomePage() {
 
                     {/* Prix */}
                     <p className="sm:col-span-3">
-                      {price.monthlyEur === null ? (
+                      {amount === null ? (
                         <span className="display-sm" style={{ fontSize: "1.375rem" }}>
                           {t("home.plansQuote")}
                         </span>
-                      ) : isTrial ? (
+                      ) : isFree ? (
                         <>
                           <span className="display-sm" style={{ fontSize: "1.75rem" }}>
                             {t("home.plansFree")}
@@ -780,13 +807,13 @@ export default async function HomePage() {
                             className="block text-[0.75rem] mt-0.5"
                             style={{ color: "var(--text-muted)" }}
                           >
-                            {fill(t("home.plansTrialDays"), { days: TRIAL_DAYS })}
+                            {t("home.plansForever")}
                           </span>
                         </>
                       ) : (
                         <>
                           <span className="display-sm tabular" style={{ fontSize: "1.75rem" }}>
-                            {formatPrice(price.monthlyEur, locale)}
+                            {formatPrice(amount, currency, locale)}
                           </span>
                           <span
                             className="block text-[0.75rem] mt-0.5"
@@ -800,12 +827,18 @@ export default async function HomePage() {
 
                     {/* Action */}
                     <p className="sm:col-span-2 sm:text-right">
-                      <a
-                        href={demoLink}
-                        className={price.highlight ? "btn btn-primary" : "btn btn-secondary"}
-                      >
-                        {t("home.plansChoose")}
-                      </a>
+                      {isFree ? (
+                        <Link href="/inscription" className="btn btn-primary">
+                          {t("home.plansStart")}
+                        </Link>
+                      ) : (
+                        <a
+                          href={demoLink}
+                          className={price.highlight ? "btn btn-primary" : "btn btn-secondary"}
+                        >
+                          {t("home.plansChoose")}
+                        </a>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -886,7 +919,11 @@ export default async function HomePage() {
           </p>
 
           <div className="reveal flex flex-wrap items-center gap-3 mt-9">
-            <a href={demoLink} className="btn btn-primary btn-lg">
+            <Link href="/inscription" className="btn btn-primary btn-lg">
+              {t("signup.cta")}
+              <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+            <a href={demoLink} className="btn btn-secondary btn-lg">
               <Mail size={16} aria-hidden="true" />
               {t("home.navDemo")}
             </a>
@@ -970,6 +1007,13 @@ export default async function HomePage() {
                   {user ? t("home.navOpenApp") : t("home.navLogin")}
                 </Link>
               </li>
+              {user ? null : (
+                <li>
+                  <Link href="/inscription" className="link-quiet cursor-pointer">
+                    {t("signup.ctaShort")}
+                  </Link>
+                </li>
+              )}
             </ul>
           </nav>
 

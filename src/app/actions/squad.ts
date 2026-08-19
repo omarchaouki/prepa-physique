@@ -577,7 +577,7 @@ export async function updateClubPlanAction(
   if (user.role !== "OWNER") return forbidden();
 
   const organizationId = String(formData.get("organizationId") ?? "");
-  const plan = String(formData.get("plan") ?? "TRIAL");
+  const plan = String(formData.get("plan") ?? "FREE");
   const maxTeams = Number(formData.get("maxTeams") ?? 0);
   const maxPlayers = Number(formData.get("maxPlayers") ?? 0);
   const expiresAt = String(formData.get("expiresAt") ?? "");

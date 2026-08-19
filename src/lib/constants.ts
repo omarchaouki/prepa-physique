@@ -66,16 +66,47 @@ export const PLAYER_STATUS_COLORS: Record<PlayerStatus, string> = {
   LEFT: "slate",
 };
 
-export const PLANS = ["TRIAL", "STARTER", "PRO", "ELITE"] as const;
+export const PLANS = ["FREE", "STARTER", "PRO", "ELITE"] as const;
 export type Plan = (typeof PLANS)[number];
 
+/**
+ * Plafonds de chaque forfait.
+ *
+ * FREE n'est pas un essai : il n'a pas de date de fin. Un club reste dessus
+ * aussi longtemps qu'il veut, et ne paie que le jour ou il depasse trente
+ * joueurs. C'est ce qui rend une inscription depuis une publicite sans
+ * engagement, donc sans friction.
+ */
 export const PLAN_LIMITS: Record<Plan, { maxTeams: number; maxPlayers: number; label: I18nText }> = {
-  TRIAL: { maxTeams: 1, maxPlayers: 30, label: { fr: "Essai", en: "Trial" } },
+  FREE: { maxTeams: 1, maxPlayers: 30, label: { fr: "Gratuit", en: "Free" } },
   STARTER: { maxTeams: 3, maxPlayers: 90, label: { fr: "Starter", en: "Starter" } },
   PRO: { maxTeams: 10, maxPlayers: 300, label: { fr: "Pro", en: "Pro" } },
   ELITE: { maxTeams: 100, maxPlayers: 3000, label: { fr: "Elite", en: "Elite" } },
 };
 
+/**
+ * Anciennes valeurs encore presentes en base.
+ *
+ * Le palier gratuit s'appelait TRIAL du temps ou il etait limite a quatorze
+ * jours. Les clubs crees avant le changement portent toujours cette valeur, et
+ * la reecrire demanderait une migration sur la base de production pour un
+ * resultat purement cosmetique.
+ *
+ * Toute lecture passe donc par `resolvePlan`, jamais directement par la chaine
+ * stockee. Un forfait inconnu retombe sur le gratuit : mieux vaut un club bride
+ * a trente joueurs qu'un ecran en erreur.
+ */
+const LEGACY_PLANS: Record<string, Plan> = { TRIAL: "FREE" };
+
+export const resolvePlan = (value: string | null | undefined): Plan => {
+  if (!value) return "FREE";
+  if ((PLANS as readonly string[]).includes(value)) return value as Plan;
+  return LEGACY_PLANS[value] ?? "FREE";
+};
+
+export const planLimits = (value: string | null | undefined) => PLAN_LIMITS[resolvePlan(value)];
+
 export const SESSION_COOKIE = "pp_session";
 export const LOCALE_COOKIE = "pp_locale";
+export const CURRENCY_COOKIE = "pp_currency";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;

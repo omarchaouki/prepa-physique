@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/auth";
 import { apiAccessibleTeamIds, apiCanAccessTeam, getApiUser } from "@/lib/api/session";
 import { fail, handler, ok } from "@/lib/api/respond";
+import { PLAYER_STATUSES, POSITIONS } from "@/lib/constants";
 import { applyResults } from "@/lib/tests/apply-results";
 import { validateEntries } from "@/lib/tests/validate-entries";
 import { getTest } from "@/lib/sports-science/catalog";
@@ -214,6 +215,9 @@ export const GET = handler(async (request: Request) => {
         heightCm: true,
         weightKg: true,
         status: true,
+        email: true,
+        externalId: true,
+        notes: true,
         updatedAt: true,
       },
       take: PAGE,
@@ -382,9 +386,41 @@ const resultsSave = z.object({
     .max(200),
 });
 
+/**
+ * Joueur cree ou modifie depuis le telephone.
+ *
+ * L'identifiant vient du telephone, comme pour les passations : c'est ce qui
+ * rend l'operation rejouable apres une coupure sans creer un second joueur.
+ *
+ * Le sexe n'est pas dans ce schema, et c'est volontaire. Il est impose par
+ * l'equipe d'accueil, cote serveur, exactement comme dans le formulaire du
+ * site : c'est lui qui choisit la population de reference des percentiles, et
+ * le laisser au client permettrait de comparer une joueuse a des normes
+ * masculines par une simple faute de frappe.
+ */
+const playerUpsert = z.object({
+  id: z.string().min(8).max(64),
+  teamId: z.string().min(1),
+  firstName: z.string().trim().min(1).max(80),
+  lastName: z.string().trim().min(1).max(80),
+  /** Date seule, `AAAA-MM-JJ` : une date de naissance n'a pas d'heure. */
+  birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  position: z.enum(POSITIONS),
+  secondaryPosition: z.enum(POSITIONS).nullish(),
+  dominantFoot: z.enum(["R", "L", "B"]),
+  jerseyNumber: z.number().int().min(0).max(99).nullish(),
+  heightCm: z.number().min(120).max(220).nullish(),
+  weightKg: z.number().min(25).max(150).nullish(),
+  status: z.enum(PLAYER_STATUSES),
+  email: z.string().trim().email().max(120).nullish().or(z.literal("")),
+  externalId: z.string().trim().max(60).nullish(),
+  notes: z.string().max(2000).nullish(),
+});
+
 const operation = z.discriminatedUnion("type", [
   z.object({ id: z.string().min(8), type: z.literal("session.upsert"), payload: sessionUpsert }),
   z.object({ id: z.string().min(8), type: z.literal("results.save"), payload: resultsSave }),
+  z.object({ id: z.string().min(8), type: z.literal("player.upsert"), payload: playerUpsert }),
 ]);
 
 const pushSchema = z.object({ operations: z.array(operation).min(1).max(50) });
@@ -455,6 +491,135 @@ export const POST = handler(async (request: Request) => {
         });
 
         verdicts.push({ id: op.id, status: "applied", result: { sessionId: session.id } });
+        continue;
+      }
+
+      if (op.type === "player.upsert") {
+        const { payload } = op;
+
+        // Droits sur l'equipe d'accueil.
+        const access = await apiCanAccessTeam(user, payload.teamId);
+        if (!access.canEdit) {
+          verdicts.push({
+            id: op.id,
+            status: "rejected",
+            error: { code: "FORBIDDEN", message: "Droits insuffisants sur cette equipe." },
+          });
+          continue;
+        }
+
+        const existing = await prisma.player.findUnique({
+          where: { id: payload.id },
+          select: { id: true, teamId: true },
+        });
+
+        // Transfert : il faut aussi le droit sur l'equipe de depart, sinon un
+        // preparateur pourrait s'approprier le joueur d'une equipe voisine en
+        // le deplacant vers la sienne.
+        if (existing && existing.teamId !== payload.teamId) {
+          const source = await apiCanAccessTeam(user, existing.teamId);
+          if (!source.canEdit) {
+            verdicts.push({
+              id: op.id,
+              status: "rejected",
+              error: { code: "FORBIDDEN", message: "Droits insuffisants sur l'equipe de depart." },
+            });
+            continue;
+          }
+        }
+
+        // C'est l'equipe d'accueil qui fixe le sexe, y compris lors d'un
+        // transfert : voir le commentaire du schema.
+        const team = await prisma.team.findUnique({
+          where: { id: payload.teamId },
+          select: {
+            sex: true,
+            name: true,
+            organizationId: true,
+            organization: { select: { maxPlayers: true, plan: true } },
+          },
+        });
+        if (!team) {
+          verdicts.push({
+            id: op.id,
+            status: "rejected",
+            error: { code: "NOT_FOUND", message: "Equipe introuvable." },
+          });
+          continue;
+        }
+
+        // Le plafond du forfait ne s'applique qu'a la creation. L'appliquer a
+        // la modification empecherait de corriger une faute de frappe dans un
+        // club deja au plafond, ce qui n'a aucun sens.
+        if (!existing) {
+          const count = await prisma.player.count({
+            where: { team: { organizationId: team.organizationId }, status: { not: "LEFT" } },
+          });
+          if (count >= team.organization.maxPlayers) {
+            verdicts.push({
+              id: op.id,
+              status: "rejected",
+              error: {
+                code: "CONFLICT",
+                message: `Plafond du forfait ${team.organization.plan} atteint : ${team.organization.maxPlayers} joueurs.`,
+              },
+            });
+            continue;
+          }
+        }
+
+        const birthDate = new Date(`${payload.birthDate}T00:00:00.000Z`);
+        if (Number.isNaN(birthDate.getTime())) {
+          verdicts.push({
+            id: op.id,
+            status: "rejected",
+            error: { code: "INVALID_INPUT", message: "Date de naissance invalide." },
+          });
+          continue;
+        }
+
+        const data = {
+          teamId: payload.teamId,
+          firstName: payload.firstName,
+          lastName: payload.lastName,
+          birthDate,
+          sex: team.sex,
+          position: payload.position,
+          secondaryPosition: payload.secondaryPosition || null,
+          dominantFoot: payload.dominantFoot,
+          jerseyNumber: payload.jerseyNumber ?? null,
+          heightCm: payload.heightCm ?? null,
+          weightKg: payload.weightKg ?? null,
+          status: payload.status,
+          email: payload.email || null,
+          externalId: payload.externalId || null,
+          notes: payload.notes || null,
+        };
+
+        const player = await prisma.player.upsert({
+          where: { id: payload.id },
+          create: { id: payload.id, ...data },
+          update: data,
+        });
+
+        await logAudit({
+          userId: user.id,
+          actorEmail: user.email,
+          organizationId: team.organizationId,
+          action: existing ? "UPDATE" : "CREATE",
+          entity: "Player",
+          entityId: player.id,
+          meta: {
+            canal: "mobile",
+            name: `${player.firstName} ${player.lastName}`,
+            teamId: payload.teamId,
+            ...(existing && existing.teamId !== payload.teamId
+              ? { transfertDepuis: existing.teamId }
+              : {}),
+          },
+        });
+
+        verdicts.push({ id: op.id, status: "applied", result: { playerId: player.id } });
         continue;
       }
 

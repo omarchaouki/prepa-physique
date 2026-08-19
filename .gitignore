@@ -36,5 +36,10 @@ dist-apk/
 *.keystore
 
 
-# Projet mobile, supprime le 19 aout 2026. Voir docs/HANDOFF.md.
-mobile/
+# Projet mobile Expo. Il est versionne : EAS televerse une archive construite a
+# partir de git, un dossier ignore produirait "package.json does not exist".
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/android/
+mobile/ios/

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Activity } from "lucide-react";
 
@@ -100,6 +101,18 @@ export default async function LoginPage({
             </p>
 
             <LoginForm from={from} />
+
+            {/* Un visiteur qui arrive ici depuis une publicite n'a pas encore
+                de compte. Sans ce lien, il repart. */}
+            <p
+              className="text-sm mt-6 pt-6"
+              style={{ borderTop: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}
+            >
+              {t("signup.noAccount")}{" "}
+              <Link href="/inscription" className="cursor-pointer font-semibold hover:underline">
+                {t("signup.cta")}
+              </Link>
+            </p>
           </div>
         </section>
       </main>

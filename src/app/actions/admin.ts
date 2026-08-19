@@ -17,7 +17,7 @@ const organizationSchema = z.object({
   name: z.string().min(2, "Nom du club requis"),
   country: z.string().optional(),
   city: z.string().optional(),
-  plan: z.enum(["TRIAL", "STARTER", "PRO", "ELITE"]),
+  plan: z.enum(["FREE", "STARTER", "PRO", "ELITE"]),
   expiresAt: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -32,7 +32,7 @@ export async function createOrganizationAction(
     name: String(formData.get("name") ?? "").trim(),
     country: String(formData.get("country") ?? ""),
     city: String(formData.get("city") ?? ""),
-    plan: String(formData.get("plan") ?? "TRIAL"),
+    plan: String(formData.get("plan") ?? "FREE"),
     expiresAt: String(formData.get("expiresAt") ?? ""),
     notes: String(formData.get("notes") ?? ""),
   });

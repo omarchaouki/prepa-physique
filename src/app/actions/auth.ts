@@ -14,7 +14,7 @@ import {
   signSession,
   verifyPassword,
 } from "@/lib/auth";
-import { LOCALE_COOKIE, type Role } from "@/lib/constants";
+import { CURRENCY_COOKIE, LOCALE_COOKIE, type Role } from "@/lib/constants";
 import { getT } from "@/lib/i18n/server";
 import { cookies } from "next/headers";
 
@@ -262,4 +262,16 @@ export async function stopImpersonationAction() {
   );
 
   redirect("/admin");
+}
+
+/**
+ * Enregistre la devise d'affichage choisie par le visiteur.
+ *
+ * Purement cosmetique : elle ne touche ni a la facturation ni au compte, elle
+ * decide seulement du montant affiche sur la page des tarifs. Elle vit donc
+ * dans un cookie et non en base, et reste valable un an.
+ */
+export async function setCurrencyAction(currency: "MAD" | "EUR") {
+  const store = await cookies();
+  store.set(CURRENCY_COOKIE, currency, { path: "/", maxAge: 60 * 60 * 24 * 365 });
 }
