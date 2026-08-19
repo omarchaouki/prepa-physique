@@ -59,6 +59,19 @@ Regles suivies :
 
 **Devises.** Deux prix ecrits en dur dans `PRICING`, dirham et euro, jamais une conversion a la volee : un taux qui bouge ferait varier le prix affiche d'un jour a l'autre. `formatPrice` prend la devise en argument. Le choix du visiteur vit dans un cookie, lu par `getCurrency` dans `src/lib/currency-server.ts`.
 
+**Qui peut creer.** Tous les roles sauf `VIEWER` creent equipes et joueurs, via
+`requireTeamCreator`. Celui qui cree une equipe y est rattache en `MANAGE`,
+sinon il ne la verrait plus une seconde apres. Le proprietaire fait exception :
+il accede a tout sans rattachement. Le staff et les reglages du club restent
+reserves a `requireClubAdmin`.
+
+**Prise en main.** `src/components/app/onboarding.tsx` guide un compte neuf en
+trois etapes, equipe puis joueurs puis passation. Une etape verrouillee dit
+pourquoi elle l'est. Le guide disparait seul une fois les trois franchies. Les
+actions de creation vivent la ou on les cherche : creer une equipe sur la page
+des equipes, ajouter un joueur sur la page des joueurs, jamais uniquement dans
+un ecran de gestion imbrique.
+
 **Inscription publique.** `/inscription` cree un club au forfait gratuit et son administrateur, en une transaction, puis connecte. Il n'y a pas de verification par courriel, c'est un choix assume pour la conversion : la protection repose sur une limite par adresse IP, un refus des adresses jetables et un champ leurre. Consequence a assumer, il faudra nettoyer de faux comptes de temps en temps.
 
 ## Pieges

@@ -10,7 +10,14 @@ import {
 } from "lucide-react";
 
 import { requireUser, type CurrentUser } from "@/lib/auth";
-import { getDashboardStats, getRecentSessions, getSquadAlerts, listTeams } from "@/lib/queries";
+import {
+  getDashboardStats,
+  getOnboardingState,
+  getRecentSessions,
+  getSquadAlerts,
+  listTeams,
+} from "@/lib/queries";
+import { Onboarding } from "@/components/app/onboarding";
 import { getLocaleTag, getT } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/utils";
 import {
@@ -34,6 +41,17 @@ export const dynamic = "force-dynamic";
  * sans attendre les autres. Les alertes, de loin les plus couteuses puisqu'elles
  * evaluent les recommandations de chaque joueur, ne retardent plus rien.
  */
+
+/**
+ * Guide de demarrage, en tete du tableau de bord.
+ *
+ * Il occupe sa propre frontiere Suspense : ses trois comptes ne doivent pas
+ * retarder l'affichage des indicateurs, et inversement.
+ */
+async function OnboardingSection({ user }: { user: CurrentUser }) {
+  const [state, t] = await Promise.all([getOnboardingState(user), getT()]);
+  return <Onboarding state={state} t={t} firstTeamId={state.firstTeamId} />;
+}
 
 async function StatsSection({ user }: { user: CurrentUser }) {
   const [stats, t, tag] = await Promise.all([getDashboardStats(user), getT(), getLocaleTag()]);
@@ -236,6 +254,13 @@ export default async function DashboardPage() {
           </Link>
         }
       />
+
+      {/* Le guide passe avant les indicateurs : sur un compte neuf, ceux ci
+          affichent des zeros qui n'apprennent rien, alors que le guide dit
+          quoi faire. Il disparait seul une fois les trois etapes franchies. */}
+      <Suspense fallback={null}>
+        <OnboardingSection user={user} />
+      </Suspense>
 
       <div className="mb-5">
         <Suspense fallback={<SkeletonStats />}>

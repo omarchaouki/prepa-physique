@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { UserPlus, Users } from "lucide-react";
 
 import { requireUser, accessibleTeamIds, type CurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -12,8 +12,10 @@ import {
 } from "@/lib/constants";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { ageExact } from "@/lib/utils";
-import { Badge, EmptyState, PageHeader, Panel } from "@/components/ui/primitives";
+import { Alert, Badge, EmptyState, PageHeader, Panel, PanelHeader } from "@/components/ui/primitives";
 import { SkeletonTable } from "@/components/ui/skeleton";
+import { PlayerForm } from "@/components/manage/player-form";
+import { emptyPlayer } from "@/components/manage/player-values";
 
 export const dynamic = "force-dynamic";
 
@@ -119,12 +121,90 @@ async function PlayersTable({ user }: { user: CurrentUser }) {
   );
 }
 
+/**
+ * Ajout d'un joueur, directement depuis la liste des joueurs.
+ *
+ * Il fallait auparavant passer par une equipe puis par son ecran de gestion,
+ * ce qui suppose de savoir qu'un joueur appartient a une equipe. Quelqu'un qui
+ * veut ajouter un joueur ouvre la page des joueurs, pas celle des equipes.
+ *
+ * Le formulaire porte un selecteur d'equipe d'accueil, puisqu'il n'y a pas de
+ * contexte d'equipe ici. S'il n'existe aucune equipe, la regle est expliquee
+ * plutot que constatee : un joueur appartient toujours a une equipe, il faut
+ * donc en creer une d'abord.
+ */
+async function AddPlayer({ user }: { user: CurrentUser }) {
+  const t = await getT();
+  if (user.role === "VIEWER") return null;
+
+  const ids = await accessibleTeamIds(user);
+  const teams = await prisma.team.findMany({
+    where:
+      ids === "ALL"
+        ? { isActive: true }
+        : { id: { in: ids }, isActive: true },
+    // Le sexe de l'equipe est necessaire : celui du joueur en decoule, et
+    // c'est lui qui determine la population de reference des percentiles.
+    select: { id: true, name: true, sex: true, organizationId: true },
+    orderBy: { name: "asc" },
+  });
+
+  if (teams.length === 0) {
+    return (
+      <Panel className="mb-5">
+        <PanelHeader title={t("players.add")} icon={<UserPlus size={16} />} />
+        <Alert tone="info">{t("players.needTeam")}</Alert>
+        <Link href="/app/teams" className="btn btn-primary mt-3">
+          {t("teams.create")}
+        </Link>
+      </Panel>
+    );
+  }
+
+  // Le plafond du forfait se compte au niveau du club, pas de l'equipe.
+  const organizationId = teams[0].organizationId;
+  const organization = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { maxPlayers: true },
+  });
+  const used = await prisma.player.count({
+    where: { team: { organizationId }, status: { not: "LEFT" } },
+  });
+  const full = Boolean(organization && used >= organization.maxPlayers);
+
+  return (
+    <Panel className="mb-5">
+      <PanelHeader
+        title={t("players.add")}
+        subtitle={t("players.addSubtitle")}
+        icon={<UserPlus size={16} />}
+      />
+      {full && organization ? (
+        <Alert tone="warning">
+          {t("players.limitReached").replace("{max}", String(organization.maxPlayers))}
+        </Alert>
+      ) : (
+        <PlayerForm
+          mode="create"
+          values={emptyPlayer(teams[0].id)}
+          teams={teams.map((team) => ({ id: team.id, name: team.name, sex: team.sex }))}
+        />
+      )}
+    </Panel>
+  );
+}
+
 export default async function PlayersPage() {
   const [user, t] = await Promise.all([requireUser(), getT()]);
 
   return (
     <>
       <PageHeader title={t("players.title")} description={t("players.subtitle")} />
+
+      <Suspense fallback={null}>
+        <AddPlayer user={user} />
+      </Suspense>
+
       <Panel padded={false} className="p-1">
         <Suspense fallback={<SkeletonTable rows={12} columns={6} />}>
           <PlayersTable user={user} />

@@ -6,8 +6,10 @@ import { requireUser, type CurrentUser } from "@/lib/auth";
 import { listTeams } from "@/lib/queries";
 import { TEAM_LEVEL_LABELS, type TeamLevel } from "@/lib/constants";
 import { getLocale, getT } from "@/lib/i18n/server";
-import { Badge, EmptyState, PageHeader, Panel } from "@/components/ui/primitives";
+import { Alert, Badge, EmptyState, PageHeader, Panel, PanelHeader } from "@/components/ui/primitives";
 import { SkeletonCards } from "@/components/ui/skeleton";
+import { TeamForm } from "@/components/manage/team-form";
+import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -106,12 +108,79 @@ async function TeamsGrid({ user }: { user: CurrentUser }) {
   );
 }
 
+/**
+ * Creation d'une equipe, directement depuis la liste.
+ *
+ * Elle vivait auparavant dans l'espace du club, ou personne ne pensait a aller
+ * la chercher : quelqu'un qui veut creer une equipe ouvre la page des equipes.
+ * Un formulaire cache dans un autre menu n'existe pas.
+ *
+ * Ouvert a tous les roles sauf la lecture seule. Dans un club reel, celui qui
+ * monte l'equipe est souvent l'entraineur ou le preparateur.
+ */
+async function CreateTeam({ user }: { user: CurrentUser }) {
+  const t = await getT();
+
+  if (user.role === "VIEWER") return null;
+  if (!user.organizationId) {
+    // Le proprietaire n'appartient a aucun club : il cree les equipes depuis
+    // le panneau d'administration, ou il choisit le club de destination.
+    if (user.role === "OWNER") return null;
+    return (
+      <Panel className="mb-5">
+        <Alert tone="info">{t("teams.noClub")}</Alert>
+      </Panel>
+    );
+  }
+
+  const organization = await prisma.organization.findUnique({
+    where: { id: user.organizationId },
+    select: { id: true, maxTeams: true, plan: true, _count: { select: { teams: true } } },
+  });
+  if (!organization) return null;
+
+  const full = organization._count.teams >= organization.maxTeams;
+
+  return (
+    <Panel className="mb-5">
+      <PanelHeader
+        title={t("teams.create")}
+        subtitle={t("teams.createSubtitle")}
+        icon={<UsersRound size={16} />}
+      />
+      {full ? (
+        <Alert tone="warning">
+          {t("teams.limitReached").replace("{max}", String(organization.maxTeams))}
+        </Alert>
+      ) : (
+        <TeamForm
+          mode="create"
+          values={{
+            organizationId: organization.id,
+            name: "",
+            category: "SENIOR",
+            level: "AMATEUR",
+            sex: "M",
+            season: `${new Date().getFullYear()}/${String(new Date().getFullYear() + 1).slice(2)}`,
+            colorHex: "#1E40AF",
+          }}
+        />
+      )}
+    </Panel>
+  );
+}
+
 export default async function TeamsPage() {
   const [user, t] = await Promise.all([requireUser(), getT()]);
 
   return (
     <>
       <PageHeader title={t("teams.title")} description={t("teams.subtitle")} />
+
+      <Suspense fallback={null}>
+        <CreateTeam user={user} />
+      </Suspense>
+
       <Suspense fallback={<SkeletonCards count={3} />}>
         <TeamsGrid user={user} />
       </Suspense>

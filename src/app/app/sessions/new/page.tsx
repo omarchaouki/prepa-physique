@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, UserPlus, UsersRound } from "lucide-react";
 
 import { requireUser } from "@/lib/auth";
 import { listTeams } from "@/lib/queries";
+import { prisma } from "@/lib/db";
 import { CATEGORY_LABELS, TEST_BATTERIES, TEST_DEFINITIONS } from "@/lib/sports-science/catalog";
 import { getLocale, getT, pick } from "@/lib/i18n/server";
 import { formatDateInput } from "@/lib/utils";
@@ -24,14 +25,52 @@ export default async function NewSessionPage({
   ]);
   const teams = await listTeams(user);
 
+  // Sans equipe, la passation n'a pas d'objet. On dit quoi faire plutot que de
+  // constater l'absence, et on emmene la ou c'est faisable.
   if (teams.length === 0) {
     return (
       <>
         <PageHeader title={t("sessions.new")} />
         <Panel>
           <EmptyState
-title={t("analytics.noTeam")}
-description={t("teams.noneBody")}
+            title={t("analytics.noTeam")}
+            description={t("onboarding.step2Locked")}
+            icon={<UsersRound size={20} />}
+            action={
+              user.role === "VIEWER" ? undefined : (
+                <Link href="/app/teams" className="btn btn-primary">
+                  {t("teams.create")}
+                </Link>
+              )
+            }
+          />
+        </Panel>
+      </>
+    );
+  }
+
+  // Une equipe sans joueur donne une grille de saisie vide : le preparateur
+  // choisit ses tests, arrive sur la passation, et n'a personne a mesurer.
+  const players = await prisma.player.count({
+    where: { teamId: { in: teams.map((team) => team.id) }, status: { not: "LEFT" } },
+  });
+
+  if (players === 0) {
+    return (
+      <>
+        <PageHeader title={t("sessions.new")} />
+        <Panel>
+          <EmptyState
+            title={t("players.none")}
+            description={t("sessions.needPlayers")}
+            icon={<UserPlus size={20} />}
+            action={
+              user.role === "VIEWER" ? undefined : (
+                <Link href="/app/players" className="btn btn-primary">
+                  {t("players.add")}
+                </Link>
+              )
+            }
           />
         </Panel>
       </>

@@ -1064,6 +1064,75 @@ export const MESSAGES = {
   ],
   "signup.included3": ["Aucune carte bancaire demandee", "No card required"],
 
+  // --- Prise en main d'un compte neuf ---------------------------------------
+  "onboarding.title": ["Trois etapes pour demarrer", "Three steps to get started"],
+  "onboarding.subtitle": [
+    "Votre club est cree. Il reste a le remplir.",
+    "Your club is created. Now fill it in.",
+  ],
+  "onboarding.step1": ["Creez votre equipe", "Create your team"],
+  "onboarding.step1Body": [
+    "Sa categorie et son niveau determinent les normes auxquelles vos joueurs seront compares.",
+    "Its category and level decide which norms your players are compared against.",
+  ],
+  "onboarding.step1Cta": ["Creer une equipe", "Create a team"],
+  "onboarding.step2": ["Ajoutez vos joueurs", "Add your players"],
+  "onboarding.step2Body": [
+    "Nom, date de naissance et poste suffisent pour commencer. La taille et la masse affinent les calculs.",
+    "Name, date of birth and position are enough to start. Height and weight refine the calculations.",
+  ],
+  "onboarding.step2Cta": ["Ajouter des joueurs", "Add players"],
+  "onboarding.step2Locked": [
+    "Creez d'abord une equipe.",
+    "Create a team first.",
+  ],
+  "onboarding.step3": ["Saisissez votre premiere passation", "Run your first session"],
+  "onboarding.step3Body": [
+    "Choisissez une batterie, saisissez au bord du terrain, les calculs suivent.",
+    "Pick a battery, enter results pitchside, the calculations follow.",
+  ],
+  "onboarding.step3Cta": ["Nouvelle passation", "New session"],
+  "onboarding.step3Locked": [
+    "Ajoutez d'abord au moins un joueur.",
+    "Add at least one player first.",
+  ],
+  "onboarding.done": ["Fait", "Done"],
+  "onboarding.progress": ["{done} sur {total}", "{done} of {total}"],
+
+  "teams.create": ["Creer une equipe", "Create a team"],
+  "teams.createSubtitle": [
+    "La categorie et le niveau choisis determinent la population de reference des percentiles.",
+    "The category and level you choose decide the reference population for percentiles.",
+  ],
+  "teams.limitReached": [
+    "Votre forfait autorise {max} equipe. Passez a une formule superieure pour en creer d'autres.",
+    "Your plan allows {max} team. Move to a higher plan to create more.",
+  ],
+  "teams.noClub": [
+    "Votre compte n'est rattache a aucun club. Contactez l'administrateur de votre club.",
+    "Your account is not linked to a club. Contact your club administrator.",
+  ],
+
+  "players.add": ["Ajouter un joueur", "Add a player"],
+  "players.addSubtitle": [
+    "Choisissez l'equipe, le reste se remplit en dix secondes.",
+    "Pick the team, the rest takes ten seconds.",
+  ],
+  "players.needTeam": [
+    "Creez une equipe avant d'ajouter des joueurs : un joueur appartient toujours a une equipe.",
+    "Create a team before adding players: a player always belongs to a team.",
+  ],
+  "players.chooseTeam": ["Equipe d'accueil", "Team"],
+  "players.limitReached": [
+    "Votre forfait autorise {max} joueurs. Passez a une formule superieure pour en ajouter.",
+    "Your plan allows {max} players. Move to a higher plan to add more.",
+  ],
+
+  "sessions.needPlayers": [
+    "Ajoutez au moins un joueur a cette equipe avant de creer une passation.",
+    "Add at least one player to this team before creating a session.",
+  ],
+
   // --- Page publique --------------------------------------------------------
   // Seule zone de l'application adressee a un visiteur qui ne connait pas le
   // produit. Le ton y est commercial, mais aucune affirmation n'y est inventee :

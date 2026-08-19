@@ -38,6 +38,25 @@ const requireClubAdmin = async (organizationId: string): Promise<CurrentUser> =>
   throw new Error("FORBIDDEN");
 };
 
+/**
+ * Droit de creer une equipe dans un club.
+ *
+ * Tous les roles sauf la lecture seule. Dans un club reel, celui qui monte
+ * l'equipe est souvent l'entraineur ou le preparateur, pas le dirigeant : leur
+ * demander de reclamer la creation a quelqu'un d'autre bloque le demarrage.
+ *
+ * La lecture seule reste ce que son nom dit. Un role qui pourrait ecrire ne
+ * servirait plus a rien, et un club qui donne un acces de consultation a un
+ * dirigeant lui donnerait aussi la main sur l'effectif.
+ */
+const requireTeamCreator = async (organizationId: string): Promise<CurrentUser> => {
+  const user = await requireUser();
+  if (user.role === "OWNER") return user;
+  if (user.role === "VIEWER") throw new Error("FORBIDDEN");
+  if (user.organizationId === organizationId) return user;
+  throw new Error("FORBIDDEN");
+};
+
 const forbidden = async (): Promise<ActionState> => {
   const t = await getT();
   return { error: t("manage.forbidden") };
@@ -308,7 +327,7 @@ export async function createTeamInClubAction(
 
   let user: CurrentUser;
   try {
-    user = await requireClubAdmin(organizationId);
+    user = await requireTeamCreator(organizationId);
   } catch {
     return forbidden();
   }
@@ -335,8 +354,11 @@ export async function createTeamInClubAction(
     },
   });
 
-  // Le preparateur qui cree l'equipe y est rattache, sinon il ne la verrait pas.
-  if (user.role === "CLUB_ADMIN") {
+  // Celui qui cree l'equipe y est rattache en gestion, sinon il ne la verrait
+  // plus une seconde apres l'avoir creee. Le proprietaire fait exception : il
+  // accede a tout sans rattachement, et l'inscrire comme membre de chaque
+  // equipe de chaque client n'aurait aucun sens.
+  if (user.role !== "OWNER") {
     await prisma.teamMember.create({
       data: { teamId: team.id, userId: user.id, accessLevel: "MANAGE" },
     });

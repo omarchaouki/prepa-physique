@@ -664,3 +664,40 @@ export const getSquadAlerts = cache(async (user: CurrentUser, limit = 8) => {
 });
 
 export type { Population };
+
+/**
+ * Etat de prise en main d'un compte.
+ *
+ * Trois comptes suffisent a savoir ou en est l'utilisateur dans son
+ * installation. La requete est volontairement separee de `getDashboardStats` :
+ * celle ci alimente des indicateurs affiches en permanence, alors que celle la
+ * ne sert qu'a decider si le guide de demarrage doit apparaitre, et disparait
+ * du parcours des que le club est installe.
+ */
+export const getOnboardingState = cache(async (user: CurrentUser) => {
+  const ids = await accessibleTeamIds(user);
+  const teamFilter = ids === "ALL" ? {} : { teamId: { in: ids } };
+
+  const [teams, players, sessions, firstTeam] = await Promise.all([
+    prisma.team.count({
+      where: ids === "ALL" ? {} : { id: { in: ids } },
+    }),
+    prisma.player.count({ where: { ...teamFilter, status: { not: "LEFT" } } }),
+    prisma.testSession.count({ where: teamFilter }),
+    prisma.team.findFirst({
+      where: ids === "ALL" ? {} : { id: { in: ids } },
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    }),
+  ]);
+
+  return {
+    teams,
+    players,
+    sessions,
+    firstTeamId: firstTeam?.id ?? null,
+    // La lecture seule ne cree rien : lui proposer trois etapes qu'elle ne peut
+    // pas franchir serait une invitation a l'echec.
+    canCreate: user.role !== "VIEWER",
+  };
+});
