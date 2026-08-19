@@ -35,3 +35,6 @@ dist-apk/
 *.jks
 *.keystore
 
+
+# Projet mobile, supprime le 19 aout 2026. Voir docs/HANDOFF.md.
+mobile/
