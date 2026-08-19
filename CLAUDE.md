@@ -18,21 +18,48 @@ npm run verify:db      # controle la connexion Supabase
 npm run db:push        # applique le schema, passe par DIRECT_URL
 npm run db:seed        # donnees de demonstration
 npm run owner:ensure   # cree ou repare le compte proprietaire sans toucher au reste
+npm run verify:sync    # controle qu'une descente mobile ne perd aucune ligne
+npm run db:sqlite      # bascule le connecteur en local
+npm run db:postgres    # bascule le connecteur en production
 ```
+
+Sur le serveur de production, jamais `npm run build` seul :
+
+```bash
+SKIP_BUILD_CHECKS=1 NODE_OPTIONS="--max-old-space-size=1536" npm run build
+```
+
+L'instance a 911 Mo. `SKIP_BUILD_CHECKS` coupe la verification des types et
+ramene Next a un seul processus de generation, `NODE_OPTIONS` laisse V8 depasser
+le plafond qu'il deduit de la memoire detectee. Sans les deux, la compilation
+meurt. Voir `DEPLOY.md`. La contrepartie n'est pas negociable : **`npm run
+typecheck` doit passer avant chaque `git push`**, plus rien ne verifie les types
+sur le serveur.
 
 Il n'y a ni suite de tests unitaires ni ESLint configure. La verification se fait par `typecheck`, `verify:science` et `verify:norms`. Les trois doivent passer avant toute mise en production. Un changement dans `src/lib/sports-science/` sans `verify:science` vert n'est pas termine.
 
 ## Structure
 
 ```
+src/app/page.tsx    page publique, seule page adressee a un inconnu
+src/app/inscription/  creation de compte publique, en trois etapes
+src/app/legal/      conditions, confidentialite, remboursement, mentions
 src/app/app/        interface preparateur, protegee par le middleware
 src/app/admin/      panneau proprietaire, role OWNER uniquement
 src/app/actions/    toutes les mutations, un fichier par domaine
+src/app/api/        API du mobile : auth, catalog, profiles, sync
 src/lib/queries.ts  toutes les lectures, chacune enveloppee dans cache()
+src/lib/api/        jeton porteur et droits, pour les routes d'API
+src/lib/tests/      calcul des resultats, partage par le site et l'API
 src/lib/sports-science/  calculs purs, aucun acces base, aucun texte d'interface
 src/lib/i18n/       dictionary.ts (cles), server.ts (getT), client.tsx (useT)
+src/lib/marketing.ts  contacts, identite entreprise, tarifs, devises
+src/lib/countries.ts  192 pays, engendres par Intl, jamais tapes a la main
 src/components/ui/  primitives.tsx et skeleton.tsx, la base visuelle
-src/components/manage/  formulaires de gestion, partages creation et edition
+src/components/manage/    formulaires de gestion, partages creation et edition
+src/components/marketing/ page publique et inscription
+src/components/app/       guide de prise en main
+mobile/             projet Expo separe, voir la section dediee
 scripts/            outils ponctuels en tsx ou mjs, jamais importes par l'app
 ```
 
@@ -71,6 +98,13 @@ pourquoi elle l'est. Le guide disparait seul une fois les trois franchies. Les
 actions de creation vivent la ou on les cherche : creer une equipe sur la page
 des equipes, ajouter un joueur sur la page des joueurs, jamais uniquement dans
 un ecran de gestion imbrique.
+
+**Formulaires longs.** L'inscription tient dans `sessionStorage` a chaque
+frappe, etape en cours comprise, et se relit au montage : des champs non
+controles perdent tout au moindre rafraichissement. **Les mots de passe ne sont
+jamais ecrits**, nulle part. Un composant qui lit sa valeur une seule fois au
+montage, comme `Combobox` a l'origine, perd silencieusement ce que le brouillon
+vient de restaurer : il doit etre pilote par son parent.
 
 **Inscription publique.** `/inscription` cree un club au forfait gratuit et son administrateur, en une transaction, puis connecte. Il n'y a pas de verification par courriel, c'est un choix assume pour la conversion : la protection repose sur une limite par adresse IP, un refus des adresses jetables et un champ leurre. Consequence a assumer, il faudra nettoyer de faux comptes de temps en temps.
 
@@ -122,7 +156,8 @@ regles differentes de l'application :
   `globals.css`. Les navigateurs qui l'ignorent affichent le contenu immobile
   et complet. Ne jamais cacher un element par defaut en attendant un script.
 
-Ce que Stripe verifie et qui doit rester vrai : un tarif visible en euro, les
+Ce que Stripe verifie et qui doit rester vrai : un tarif visible, en dirham et
+en euro, les
 conditions de resiliation, la politique de remboursement, la confidentialite,
 l'identite de l'entreprise, et un service client joignable. Les quatre pages
 sont sous `/legal` et liees depuis le pied de page.
@@ -131,9 +166,11 @@ sont sous `/legal` et liees depuis le pied de page.
 
 `mobile/`, projet Expo separe avec son propre `package.json`. React Native, SDK 57.
 
-- **Elle parle a l'API, jamais a Prisma.** Les routes sont sous `src/app/api/` :
-  connexion, session, catalogue, et `sync` en descente et remontee. Toute
-  nouvelle donnee sur le telephone passe par `sync`, pas par une route dediee.
+- **Elle parle a l'API, jamais a Prisma.** Cinq routes sous `src/app/api/` :
+  `auth/login`, `auth/session`, `catalog`, `sync` en descente et remontee, et
+  `profiles` qui renvoie ce que le telephone ne sait pas produire, libelles
+  lisibles, percentiles, seuils et recommandations. Une donnee brute nouvelle
+  passe par `sync`, pas par une route dediee.
 - **Aucun ecran n'appelle le reseau pour s'afficher.** Tous lisent la base
   SQLite locale, que la synchronisation met a jour en arriere plan.
 - **Le telephone ne calcule aucune formule scientifique.** Il envoie des valeurs
@@ -159,15 +196,36 @@ sont sous `/legal` et liees depuis le pied de page.
 
 ## Contraintes fermes
 
-**L'APK ne se reconstruit pas pour une modification de l'application.** C'est une coque Capacitor qui pointe vers `APP_URL` ; tout le contenu vient du serveur. Un simple redeploiement suffit, les telephones recoivent la mise a jour au rechargement. L'APK se reconstruit uniquement si l'`appId`, le nom, l'icone, l'ecran de lancement, la page hors ligne ou l'adresse du serveur changent :
+**Deux applications Android coexistent, et elles ne se mettent pas a jour de la
+meme facon.** Confondre les deux fait perdre une journee.
+
+| | Coque Capacitor (`android/`) | React Native (`mobile/`) |
+|---|---|---|
+| Ce qu'elle embarque | rien, elle affiche le site | l'interface entiere |
+| Apres un changement du site | rien a faire, rechargement suffit | sans effet |
+| Apres un changement de `mobile/` | sans effet | **recompilation obligatoire** |
+| Compilation | `npm run android:apk` | `eas build`, chez Expo |
+
+La coque Capacitor pointe vers `APP_URL` : elle ne se reconstruit que si
+l'`appId`, le nom, l'icone, l'ecran de lancement ou l'adresse du serveur
+changent.
 
 ```bash
 APP_URL=https://lamsaa.ma npm run android:sync && npm run android:apk
 ```
 
-- L'`appId` `ma.lamsaa.prepaphysique` est definitif des la premiere distribution. Le changer produit une application differente, sans mise a jour possible pour ceux qui ont l'ancienne.
-- Capacitor reste en version 6. La 7 exige le JDK 21, la machine a le 17. `compileSdk` et `targetSdk` restent a 35.
-- La cle de signature ne s'ecrit jamais sur le disque en clair. `android/release.jks`, `*.jks`, `*.keystore` et `dist-apk/` sont ignores par git.
+L'application React Native, elle, embarque son code. Toute modification demande
+une nouvelle compilation, sauf un changement purement JavaScript qui peut partir
+par `eas update` sans repasser par Google Play.
+
+- L'`appId` `ma.lamsaa.prepaphysique` est **partage par les deux** et definitif.
+  Un telephone qui a l'une refusera l'autre : memes identifiants, cles de
+  signature differentes. Desinstaller avant d'installer.
+- Capacitor reste en version 6. La 7 exige le JDK 21, la machine a le 17.
+- `eas-cli` s'installe en global. `npx eas` echoue, le paquet s'appelle
+  `eas-cli`.
+- La cle de signature ne s'ecrit jamais sur le disque en clair. `*.jks`,
+  `*.keystore` et `dist-apk/` sont ignores par git.
 
 **Secrets.** `.env` n'est jamais commite, jamais recopie dans un fichier suivi, jamais affiche dans une reponse. Les identifiants Supabase et les mots de passe de comptes n'existent qu'a cet endroit.
 
