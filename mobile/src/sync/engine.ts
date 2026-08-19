@@ -30,6 +30,8 @@ export interface SyncReport {
   rejected: number;
   pulled: number;
   rounds: number;
+  /** Fiches joueurs recuperees, celles qui portent percentiles et conseils. */
+  profiles: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -368,6 +370,130 @@ export const readCatalog = async (): Promise<Catalog | null> => {
 };
 
 // ---------------------------------------------------------------------------
+// Fiches joueurs
+// ---------------------------------------------------------------------------
+
+/**
+ * Une fiche joueur, telle que le serveur la calcule.
+ *
+ * La forme suit celle de `getPlayerProfile` cote site, moins `results` et
+ * `metrics` que le telephone possede deja par la descente. Les types restent
+ * volontairement larges : cette structure est riche, et la redecrire ici en
+ * entier creerait une seconde definition a maintenir en parallele de celle du
+ * serveur, qui divergerait au premier changement.
+ */
+export interface PlayerProfile {
+  player: Record<string, unknown> & { id: string; firstName: string; lastName: string };
+  ageYears: number;
+  population: string;
+  comparisons: Array<{
+    key: string;
+    label: string;
+    value: number;
+    unit: string | null;
+    date: string;
+    side: string | null;
+    percentile: number | null;
+    band: string | null;
+    normMean: number | null;
+    higherIsBetter: boolean;
+    vsSquadPct: number | null;
+    thresholdStatus: string | null;
+    thresholdLabel: string | null;
+  }>;
+  radar: Array<{ key: string; label: string; percentile: number | null; value: number | null }>;
+  recommendations: Array<{
+    area: string;
+    severity: string;
+    title: string;
+    detail: string;
+    action?: string;
+    reference?: string;
+  }>;
+  recommendationSummary: Record<string, unknown>;
+  latest: Record<string, unknown>;
+}
+
+const PROFILES_AT = "profilesAt";
+
+/** Nombre de fiches demandees par requete. */
+const PROFILE_BATCH = 12;
+
+/**
+ * Telecharge les fiches et les range en base locale.
+ *
+ * Par lots, pour deux raisons mesurees : une demande de quarante et un joueurs
+ * prend vingt huit secondes cote serveur, ce qui depasse le delai du client, et
+ * une reponse unique de plusieurs mega octets se perd entierement a la moindre
+ * coupure. Par lots de douze, chaque requete tient sous quinze secondes et une
+ * coupure ne coute que le dernier lot.
+ */
+export const syncProfiles = async (token: string, locale: string): Promise<number> => {
+  const db = await openDb();
+  const players = await db.getAllAsync<{ id: string }>(
+    "SELECT id FROM players WHERE status != 'LEFT' ORDER BY lastName",
+  );
+  if (players.length === 0) return 0;
+
+  let stored = 0;
+
+  for (let index = 0; index < players.length; index += PROFILE_BATCH) {
+    const slice = players.slice(index, index + PROFILE_BATCH).map((row) => row.id);
+
+    const { data } = await request<{ profiles: PlayerProfile[]; builtAt: string }>(
+      "/api/profiles",
+      {
+        method: "POST",
+        token,
+        body: { playerIds: slice, locale },
+        // Le calcul cote serveur est plus long qu'une simple lecture : il
+        // compare a des tables de normes et fait tourner le moteur de
+        // recommandations pour chaque joueur du lot.
+        timeoutMs: 45_000,
+      },
+    );
+
+    await db.withTransactionAsync(async () => {
+      for (const profile of data.profiles) {
+        await db.runAsync(
+          "INSERT OR REPLACE INTO profiles (playerId, locale, json, builtAt) VALUES (?, ?, ?, ?)",
+          profile.player.id,
+          locale,
+          JSON.stringify(profile),
+          data.builtAt,
+        );
+        stored += 1;
+      }
+    });
+  }
+
+  await setMeta(PROFILES_AT, new Date().toISOString());
+  return stored;
+};
+
+/** Fiche d'un joueur, lue en base locale. */
+export const readProfile = async (playerId: string): Promise<PlayerProfile | null> => {
+  const db = await openDb();
+  const row = await db.getFirstAsync<{ json: string }>(
+    "SELECT json FROM profiles WHERE playerId = ?",
+    playerId,
+  );
+  if (!row) return null;
+  try {
+    return JSON.parse(row.json) as PlayerProfile;
+  } catch {
+    return null;
+  }
+};
+
+/** Langue des fiches actuellement stockees, pour savoir s'il faut les refaire. */
+export const profilesLocale = async (): Promise<string | null> => {
+  const db = await openDb();
+  const row = await db.getFirstAsync<{ locale: string }>("SELECT locale FROM profiles LIMIT 1");
+  return row?.locale ?? null;
+};
+
+// ---------------------------------------------------------------------------
 // Cycle complet
 // ---------------------------------------------------------------------------
 
@@ -378,12 +504,38 @@ export const readCatalog = async (): Promise<Catalog | null> => {
  * transitoires, qui ne demandent qu'a attendre le reseau, de la session
  * invalide, qui impose un retour a l'ecran de connexion.
  */
-export const runSync = async (token: string): Promise<SyncReport> => {
+export const runSync = async (token: string, locale = "fr"): Promise<SyncReport> => {
+  // Le catalogue passe en premier, et non en dernier comme avant.
+  //
+  // C'est lui qui decrit les champs de chaque test : sans lui, la grille de
+  // saisie est vide et l'application devient inutilisable, meme avec toutes les
+  // equipes et tous les joueurs descendus. Le placer apres la descente le
+  // rendait dependant de sa reussite : une descente interrompue laissait
+  // l'utilisateur avec des donnees mais aucune possibilite d'en ajouter.
+  //
+  // Il pese quelques dizaines de kilo octets et ne change qu'une fois par an,
+  // donc le charger d'abord ne coute rien.
+  await syncCatalog(token);
+
   const { pushed, rejected } = await push(token);
   const { pulled, rounds } = await pull(token);
-  await syncCatalog(token);
-  return { pushed, rejected, pulled, rounds };
+
+  // Les fiches viennent apres la descente : elles decrivent des joueurs qui
+  // doivent d'abord exister en base locale. Une erreur ici ne fait pas echouer
+  // la synchronisation : l'effectif et la saisie restent utilisables sans les
+  // fiches, ce serait dommage de tout perdre pour une analyse.
+  let profiles = 0;
+  try {
+    profiles = await syncProfiles(token, locale);
+  } catch (error) {
+    if (error instanceof ApiError && error.requiresSignOut) throw error;
+  }
+
+  return { pushed, rejected, pulled, rounds, profiles };
 };
+
+/** Vrai quand le telephone sait dessiner les grilles de saisie. */
+export const hasCatalog = async (): Promise<boolean> => (await readCatalog()) !== null;
 
 export const lastSyncAt = async (): Promise<Date | null> => {
   const value = await getMeta(LAST_SYNC);

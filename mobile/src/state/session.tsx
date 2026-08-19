@@ -89,7 +89,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       if (!options?.silent) setSyncStatus("syncing");
 
       try {
-        const report = await runSync(token.current);
+        const report = await runSync(token.current, locale);
         setLastSync(await lastSyncAt());
         await refreshPending();
         setSyncStatus("idle");
@@ -108,7 +108,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         running.current = false;
       }
     },
-    [clearSession, refreshPending],
+    [clearSession, refreshPending, locale],
   );
 
   // Restauration au lancement.

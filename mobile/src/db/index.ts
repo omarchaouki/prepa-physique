@@ -27,7 +27,7 @@ const DATABASE = "lamsaa.db";
  * serveur reste la source de verite, sauf pour la file d'attente qui est donc
  * la seule table preservee.
  */
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 let instance: SQLite.SQLiteDatabase | null = null;
 
@@ -128,6 +128,20 @@ CREATE TABLE IF NOT EXISTS outbox (
 );
 CREATE INDEX IF NOT EXISTS idx_outbox_order ON outbox (createdAt);
 
+/*
+ * Fiches joueurs, telles que le serveur les calcule.
+ *
+ * Le telephone ne sait pas produire un percentile ni une recommandation : cela
+ * demande les tables de normes et le moteur de recommandations. Il recoit donc
+ * le resultat et le garde, ce qui rend la fiche consultable sans reseau.
+ */
+CREATE TABLE IF NOT EXISTS profiles (
+  playerId TEXT PRIMARY KEY NOT NULL,
+  locale TEXT NOT NULL,
+  json TEXT NOT NULL,
+  builtAt TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS meta (
   key TEXT PRIMARY KEY NOT NULL,
   value TEXT
@@ -156,8 +170,8 @@ export const openDb = async (): Promise<SQLite.SQLiteDatabase> => {
     // contient le seul travail qui n'existe nulle part ailleurs.
     await db.execAsync(`
       DELETE FROM teams; DELETE FROM players; DELETE FROM sessions;
-      DELETE FROM results; DELETE FROM metrics;
-      DELETE FROM meta WHERE key IN ('cursor', 'lastSyncAt', 'catalogEtag', 'catalog');
+      DELETE FROM results; DELETE FROM metrics; DELETE FROM profiles;
+      DELETE FROM meta WHERE key IN ('cursor', 'lastSyncAt', 'catalogEtag', 'catalog', 'profilesAt');
     `);
     await db.runAsync(
       "INSERT OR REPLACE INTO meta (key, value) VALUES ('schemaVersion', ?)",
@@ -198,7 +212,8 @@ export const wipe = async (): Promise<void> => {
   const db = await openDb();
   await db.execAsync(`
     DELETE FROM teams; DELETE FROM players; DELETE FROM sessions;
-    DELETE FROM results; DELETE FROM metrics; DELETE FROM outbox; DELETE FROM meta;
+    DELETE FROM results; DELETE FROM metrics; DELETE FROM profiles;
+    DELETE FROM outbox; DELETE FROM meta;
   `);
   await db.runAsync(
     "INSERT OR REPLACE INTO meta (key, value) VALUES ('schemaVersion', ?)",
