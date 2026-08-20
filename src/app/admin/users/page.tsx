@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { Eye, Power, UserPlus } from "lucide-react";
+import { Eye, Power, UserPlus, Phone } from "lucide-react";
 
 import { requireOwner, type CurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -51,6 +51,24 @@ async function UsersTable() {
                   <span className="block text-[0.75rem]" style={{ color: "var(--text-muted)" }}>
                     {user.email}
                   </span>
+                  {/* Le telephone se lit sous l'adresse plutot que dans une
+                      colonne a lui : ce tableau en compte deja sept, et une
+                      huitieme forcerait un defilement horizontal sur un
+                      ordinateur portable. Il n'apparait que s'il existe, pour
+                      ne pas semer des tirets sur toute la colonne.
+
+                      `dir="ltr"` parce qu'un numero se lit de gauche a droite
+                      dans toutes les langues servies. */}
+                  {user.phone ? (
+                    <span
+                      className="mt-0.5 inline-flex items-center gap-1 text-[0.75rem]"
+                      style={{ color: "var(--text-muted)" }}
+                      dir="ltr"
+                    >
+                      <Phone size={11} aria-hidden="true" />
+                      {user.phone}
+                    </span>
+                  ) : null}
                 </td>
                 <td>
                   <Badge tone={user.role === "OWNER" ? "brand" : "neutral"}>

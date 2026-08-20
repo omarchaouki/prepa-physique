@@ -18,6 +18,10 @@ import type { Locale } from "@/lib/i18n/dictionary";
  * Le choix part dans un cookie, donc il survit a la navigation et au retour sur
  * le site. Un rafraichissement du routeur suffit ensuite : la page est rendue
  * cote serveur, elle revient avec les bons montants sans rechargement complet.
+ *
+ * Les pastilles sont volontairement plus petites que la cible tactile minimale,
+ * et c'est `.currency-option` qui rattrape l'ecart en etendant la zone touchee
+ * a quarante quatre pixels autour de chacune. Voir globals.css.
  */
 export function CurrencySwitcher({
   current,
@@ -60,7 +64,7 @@ export function CurrencySwitcher({
             aria-pressed={active}
             // Le nom complet est donne a la voix, le sigle suffit a l'oeil.
             aria-label={CURRENCY_LABELS[currency].name[locale]}
-            className="px-3 rounded-md cursor-pointer transition-colors disabled:opacity-50"
+            className="currency-option px-3 rounded-md cursor-pointer transition-colors disabled:opacity-50"
             style={{
               height,
               fontSize: font,

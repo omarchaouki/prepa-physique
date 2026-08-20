@@ -26,46 +26,46 @@ const metric = (
 
 export const sprintLinear: TestDefinition = {
   key: "sprint_linear",
-  name: { fr: "Sprint lineaire et profil force vitesse", en: "Linear sprint and force velocity profile" },
+  name: { fr: "Sprint linéaire et profil force vitesse", en: "Linear sprint and force velocity profile" },
   shortName: { fr: "Sprint", en: "Sprint" },
   category: "SPRINT",
   description: {
-    fr: "Sprint maximal depart arrete avec temps de passage. Reconstruit le profil force vitesse horizontal par la methode de Samozino.",
+    fr: "Sprint maximal départ arrêté avec temps de passage. Reconstruit le profil force vitesse horizontal par la méthode de Samozino.",
     en: "Maximal sprint from a standing start with split times. Rebuilds the horizontal force velocity profile using the Samozino method.",
   },
   protocol: {
-    fr: "Echauffement complet incluant trois accelerations progressives. Depart arrete, pied avant a 50 centimetres de la premiere cellule. Deux a trois essais maximaux avec 4 a 5 minutes de recuperation. Retenir le meilleur essai. Noter la temperature et le vent.",
+    fr: "Échauffement complet incluant trois accélérations progressives. Départ arrêté, pied avant à 50 centimètres de la première cellule. Deux à trois essais maximaux avec 4 à 5 minutes de récupération. Retenir le meilleur essai. Noter la température et le vent.",
     en: "Full warm up with three progressive accelerations. Standing start, front foot 50 cm behind the first gate. Two to three maximal trials with 4 to 5 minutes rest. Keep the best trial. Record temperature and wind.",
   },
-  equipment: { fr: "Cellules photoelectriques ou radar, 40 metres de piste", en: "Timing gates or radar, 40 m runway" },
+  equipment: { fr: "Cellules photoélectriques ou radar, 40 mètres de piste", en: "Timing gates or radar, 40 m runway" },
   durationMin: 20,
   reference: "Samozino et al. 2016, Morin & Samozino 2016",
   needsContext: ["bodyMassKg", "heightCm"],
   fields: [
-    { key: "t5", label: { fr: "Temps a 5 m", en: "5 m time" }, unit: "s", type: "number", step: 0.001, min: 0.5, max: 3, optional: true, group: { fr: "Temps de passage", en: "Split times" } },
-    { key: "t10", label: { fr: "Temps a 10 m", en: "10 m time" }, unit: "s", type: "number", step: 0.001, min: 1, max: 4, group: { fr: "Temps de passage", en: "Split times" } },
-    { key: "t20", label: { fr: "Temps a 20 m", en: "20 m time" }, unit: "s", type: "number", step: 0.001, min: 2, max: 6, group: { fr: "Temps de passage", en: "Split times" } },
-    { key: "t30", label: { fr: "Temps a 30 m", en: "30 m time" }, unit: "s", type: "number", step: 0.001, min: 3, max: 8, optional: true, group: { fr: "Temps de passage", en: "Split times" } },
-    { key: "t40", label: { fr: "Temps a 40 m", en: "40 m time" }, unit: "s", type: "number", step: 0.001, min: 4, max: 10, optional: true, group: { fr: "Temps de passage", en: "Split times" } },
+    { key: "t5", label: { fr: "Temps à 5 m", en: "5 m time" }, unit: "s", type: "number", step: 0.001, min: 0.5, max: 3, optional: true, group: { fr: "Temps de passage", en: "Split times" } },
+    { key: "t10", label: { fr: "Temps à 10 m", en: "10 m time" }, unit: "s", type: "number", step: 0.001, min: 1, max: 4, group: { fr: "Temps de passage", en: "Split times" } },
+    { key: "t20", label: { fr: "Temps à 20 m", en: "20 m time" }, unit: "s", type: "number", step: 0.001, min: 2, max: 6, group: { fr: "Temps de passage", en: "Split times" } },
+    { key: "t30", label: { fr: "Temps à 30 m", en: "30 m time" }, unit: "s", type: "number", step: 0.001, min: 3, max: 8, optional: true, group: { fr: "Temps de passage", en: "Split times" } },
+    { key: "t40", label: { fr: "Temps à 40 m", en: "40 m time" }, unit: "s", type: "number", step: 0.001, min: 4, max: 10, optional: true, group: { fr: "Temps de passage", en: "Split times" } },
     {
       key: "timingStart",
-      label: { fr: "Declenchement du chronometre", en: "Timing trigger" },
+      label: { fr: "Déclenchement du chronomètre", en: "Timing trigger" },
       unit: "",
       type: "select",
       optional: true,
       group: { fr: "Conditions", en: "Conditions" },
       help: {
-        fr: "Cellules avec depart 0.5 m en arriere par defaut. Le profil force vitesse exige que l'instant zero corresponde au premier mouvement, or avec des cellules le joueur est deja lance au passage du faisceau, une correction est donc appliquee.",
+        fr: "Cellules avec départ 0.5 m en arrière par défaut. Le profil force vitesse exige que l'instant zéro corresponde au premier mouvement, or avec des cellules le joueur est déjà lance au passage du faisceau, une correction est donc appliquée.",
         en: "The force velocity profile requires time zero to be the first movement. With timing gates the athlete is already moving at the beam, so a correction is applied.",
       },
       options: [
-        { value: "photocell_05", label: { fr: "Cellules, depart 0.5 m en arriere", en: "Gates, 0.5 m behind start" } },
-        { value: "photocell_1m", label: { fr: "Cellules, depart 1 m en arriere", en: "Gates, 1 m behind start" } },
-        { value: "movement", label: { fr: "Video ou radar, depart au premier mouvement", en: "Video or radar, movement onset" } },
+        { value: "photocell_05", label: { fr: "Cellules, départ 0.5 m en arrière", en: "Gates, 0.5 m behind start" } },
+        { value: "photocell_1m", label: { fr: "Cellules, départ 1 m en arrière", en: "Gates, 1 m behind start" } },
+        { value: "movement", label: { fr: "Vidéo ou radar, départ au premier mouvement", en: "Video or radar, movement onset" } },
       ],
     },
-    { key: "temperature", label: { fr: "Temperature", en: "Temperature" }, unit: "C", type: "number", step: 0.5, min: -10, max: 50, optional: true, group: { fr: "Conditions", en: "Conditions" }, help: { fr: "Sert a corriger la densite de l'air. Par defaut 20 degres.", en: "Used to correct air density. Defaults to 20 degrees." } },
-    { key: "wind", label: { fr: "Vent de face", en: "Head wind" }, unit: "m/s", type: "number", step: 0.1, min: -5, max: 5, optional: true, group: { fr: "Conditions", en: "Conditions" }, help: { fr: "Positif pour un vent de face, negatif pour un vent de dos.", en: "Positive for head wind, negative for tail wind." } },
+    { key: "temperature", label: { fr: "Température", en: "Temperature" }, unit: "C", type: "number", step: 0.5, min: -10, max: 50, optional: true, group: { fr: "Conditions", en: "Conditions" }, help: { fr: "Sert à corriger la densité de l'air. Par défaut 20 degrés.", en: "Used to correct air density. Defaults to 20 degrees." } },
+    { key: "wind", label: { fr: "Vent de face", en: "Head wind" }, unit: "m/s", type: "number", step: 0.1, min: -5, max: 5, optional: true, group: { fr: "Conditions", en: "Conditions" }, help: { fr: "Positif pour un vent de face, négatif pour un vent de dos.", en: "Positive for head wind, negative for tail wind." } },
   ],
   compute: (raw, ctx) => {
     const splits = [
@@ -164,18 +164,18 @@ export const sprintFlying: TestDefinition = {
   shortName: { fr: "Lance", en: "Flying" },
   category: "SPRINT",
   description: {
-    fr: "Mesure directe de la vitesse maximale sur un troncon lance. Reference pour individualiser les seuils GPS et la reserve de vitesse.",
+    fr: "Mesure directe de la vitesse maximale sur un tronçon lance. Référence pour individualiser les seuils GPS et la réserve de vitesse.",
     en: "Direct measurement of maximum velocity over a flying section. Reference for individualising GPS thresholds and speed reserve.",
   },
   protocol: {
-    fr: "Zone d'elan de 20 a 30 metres puis troncon chronometre de 10 ou 20 metres. Deux essais maximaux avec 5 minutes de recuperation complete.",
+    fr: "Zone d'élan de 20 à 30 mètres puis tronçon chronomètre de 10 ou 20 mètres. Deux essais maximaux avec 5 minutes de récupération complète.",
     en: "20 to 30 m run up then a timed 10 or 20 m section. Two maximal trials with 5 minutes full recovery.",
   },
-  equipment: { fr: "Cellules photoelectriques, 50 metres", en: "Timing gates, 50 m" },
+  equipment: { fr: "Cellules photoélectriques, 50 mètres", en: "Timing gates, 50 m" },
   durationMin: 12,
   reference: "Haugen et al. 2019",
   fields: [
-    { key: "distance", label: { fr: "Distance chronometree", en: "Timed distance" }, unit: "m", type: "number", step: 5, min: 5, max: 30 },
+    { key: "distance", label: { fr: "Distance chronométrée", en: "Timed distance" }, unit: "m", type: "number", step: 5, min: 5, max: 30 },
     { key: "time", label: { fr: "Temps", en: "Time" }, unit: "s", type: "number", step: 0.001, min: 0.3, max: 5 },
   ],
   compute: (raw) => {
@@ -213,24 +213,24 @@ export const sprintFlying: TestDefinition = {
 
 export const test505: TestDefinition = {
   key: "test_505",
-  name: { fr: "Test 505 et deficit de changement de direction", en: "505 test and change of direction deficit" },
+  name: { fr: "Test 505 et déficit de changement de direction", en: "505 test and change of direction deficit" },
   shortName: { fr: "505", en: "505" },
   category: "COD",
   description: {
-    fr: "Demi tour a 180 degres apres 10 metres d'elan. Compare au sprint sur 10 metres, il isole la qualite de reorientation independamment de la vitesse lineaire.",
+    fr: "Demi tour à 180 degrés après 10 mètres d'élan. Compare au sprint sur 10 mètres, il isole la qualité de réorientation indépendamment de la vitesse linéaire.",
     en: "180 degree turn after a 10 m run up. Compared with the 10 m sprint it isolates reorientation quality independently of linear speed.",
   },
   protocol: {
-    fr: "Cellule placee a 10 metres du depart. Le joueur accelere sur 10 metres, franchit la cellule, pivote sur la ligne a 15 metres et revient franchir la cellule. Deux essais par jambe de pivot, meilleur temps retenu.",
+    fr: "Cellule placee à 10 mètres du départ. Le joueur accéléré sur 10 mètres, franchit la cellule, pivote sur la ligne à 15 mètres et revient franchir la cellule. Deux essais par jambe de pivot, meilleur temps retenu.",
     en: "Gate placed 10 m from the start. The athlete accelerates over 10 m, crosses the gate, turns on the line at 15 m and returns through the gate. Two trials per turning leg, best time kept.",
   },
-  equipment: { fr: "Cellules photoelectriques, 20 metres, plots", en: "Timing gates, 20 m, cones" },
+  equipment: { fr: "Cellules photoélectriques, 20 mètres, plots", en: "Timing gates, 20 m, cones" },
   durationMin: 15,
   reference: "Nimphius et al. 2016 et 2018",
   fields: [
     { key: "left", label: { fr: "505 pivot pied gauche", en: "505 left turning foot" }, unit: "s", type: "number", step: 0.001, min: 1.5, max: 5 },
     { key: "right", label: { fr: "505 pivot pied droit", en: "505 right turning foot" }, unit: "s", type: "number", step: 0.001, min: 1.5, max: 5 },
-    { key: "sprint10", label: { fr: "Temps de reference 10 m", en: "10 m reference time" }, unit: "s", type: "number", step: 0.001, min: 1, max: 3, optional: true, help: { fr: "Necessaire pour calculer le deficit de changement de direction. Repris automatiquement du test de sprint si laisse vide.", en: "Needed for the change of direction deficit. Taken from the sprint test automatically if left empty." } },
+    { key: "sprint10", label: { fr: "Temps de référence 10 m", en: "10 m reference time" }, unit: "s", type: "number", step: 0.001, min: 1, max: 3, optional: true, help: { fr: "Nécessaire pour calculer le déficit de changement de direction. Repris automatiquement du test de sprint si laisse vide.", en: "Needed for the change of direction deficit. Taken from the sprint test automatically if left empty." } },
   ],
   compute: (raw) => {
     const result = computeChangeOfDirection({
@@ -268,14 +268,14 @@ export const illinoisTest: TestDefinition = {
   shortName: { fr: "Illinois", en: "Illinois" },
   category: "COD",
   description: {
-    fr: "Parcours d'agilite de 60 metres avec slalom. Evalue la vitesse de deplacement avec changements de direction multiples.",
+    fr: "Parcours d'agilité de 60 mètres avec slalom. Évalué la vitesse de déplacement avec changements de direction multiples.",
     en: "60 m agility course with slalom. Assesses movement speed with multiple direction changes.",
   },
   protocol: {
-    fr: "Parcours de 10 metres de long et 5 metres de large, quatre plots centraux espaces de 3.3 metres. Depart couche sur le ventre, mains au niveau des epaules. Deux essais.",
+    fr: "Parcours de 10 mètres de long et 5 mètres de large, quatre plots centraux espaces de 3.3 mètres. Départ couche sur le ventre, mains au niveau des épaules. Deux essais.",
     en: "Course 10 m long and 5 m wide, four central cones 3.3 m apart. Start lying prone with hands at shoulder level. Two trials.",
   },
-  equipment: { fr: "Huit plots, chronometre ou cellules", en: "Eight cones, stopwatch or gates" },
+  equipment: { fr: "Huit plots, chronomètre ou cellules", en: "Eight cones, stopwatch or gates" },
   durationMin: 10,
   reference: "Getchell 1979, Hachana et al. 2013",
   needsContext: ["sex"],
@@ -299,14 +299,14 @@ export const tTest: TestDefinition = {
   shortName: { fr: "Test T", en: "T test" },
   category: "COD",
   description: {
-    fr: "Parcours en T combinant course avant, pas chasses lateraux et course arriere. Evalue l'agilite multidirectionnelle.",
+    fr: "Parcours en T combinant course avant, pas chassés latéraux et course arrière. Évalué l'agilité multidirectionnelle.",
     en: "T shaped course combining forward running, lateral shuffling and backpedalling. Assesses multidirectional agility.",
   },
   protocol: {
-    fr: "Course avant sur 9.14 metres, pas chasses sur 4.57 metres a gauche puis 9.14 metres a droite, retour de 4.57 metres, puis course arriere sur 9.14 metres. Le joueur doit toucher chaque plot.",
+    fr: "Course avant sur 9.14 mètres, pas chassés sur 4.57 mètres à gauche puis 9.14 mètres à droite, retour de 4.57 mètres, puis course arrière sur 9.14 mètres. Le joueur doit toucher chaque plot.",
     en: "9.14 m forward run, 4.57 m shuffle left then 9.14 m right, 4.57 m back, then 9.14 m backpedal. The athlete must touch each cone.",
   },
-  equipment: { fr: "Quatre plots, chronometre ou cellules", en: "Four cones, stopwatch or gates" },
+  equipment: { fr: "Quatre plots, chronomètre ou cellules", en: "Four cones, stopwatch or gates" },
   durationMin: 10,
   reference: "Semenick 1990, Pauole et al. 2000",
   needsContext: ["sex"],

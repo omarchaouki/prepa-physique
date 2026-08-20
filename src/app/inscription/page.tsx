@@ -9,7 +9,8 @@ import { getLocale, getT } from "@/lib/i18n/server";
 import { LocaleProvider } from "@/lib/i18n/client";
 import { LanguageSwitcher } from "@/components/shell/language-switcher";
 import { Wordmark } from "@/components/marketing/wordmark";
-import { SignUpForm } from "./signup-form";
+import { SignUpForm } from "@/components/marketing/signup/signup-form";
+import { signupCopyFromApp } from "@/components/marketing/signup/build-copy";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +63,7 @@ export default async function SignUpPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-lg px-5 py-10">
+      <main className="form-comfortable mx-auto max-w-lg px-5 py-10">
         <h1 className="display-sm" style={{ fontSize: "clamp(1.75rem, 5vw, 2.25rem)" }}>
           {t("signup.title")}
         </h1>
@@ -72,7 +73,7 @@ export default async function SignUpPage() {
 
         <hr className="rule my-7" />
 
-        <SignUpForm />
+        <SignUpForm copy={signupCopyFromApp(t, locale)} />
 
         <hr className="rule mt-8" />
 

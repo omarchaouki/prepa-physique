@@ -192,8 +192,20 @@ export default async function PrivacyPage() {
       heading: { fr: "Cookies", en: "Cookies" },
       paragraphs: [
         {
-          fr: "Deux cookies seulement, tous deux necessaires au fonctionnement : celui qui maintient votre session ouverte, et celui qui retient votre choix de langue. Aucun cookie de mesure d'audience, aucun cookie publicitaire, donc aucune banniere de consentement.",
-          en: "Two cookies only, both necessary to operation: the one keeping your session open, and the one remembering your language choice. No analytics cookie, no advertising cookie, therefore no consent banner.",
+          fr: "Trois cookies sont necessaires au fonctionnement et se posent sans consentement : celui qui maintient votre session ouverte, celui qui retient votre choix de langue, et celui qui retient votre choix de devise.",
+          en: "Three cookies are necessary to operation and are set without consent: the one keeping your session open, the one remembering your language choice, and the one remembering your currency choice.",
+        },
+        {
+          fr: "S'y ajoutent, lorsque la mesure d'audience est activee, des cookies deposes par Meta et par Microsoft Clarity. Ils servent a savoir quelles publicites amenent des inscriptions et a quel endroit d'un formulaire les visiteurs abandonnent. Ils ne sont pas necessaires au service, et ils ne portent aucune donnee de joueur.",
+          en: "When audience measurement is enabled, cookies set by Meta and by Microsoft Clarity are added. They serve to learn which advertisements bring sign ups and where in a form visitors give up. They are not necessary to the service, and they carry no player data.",
+        },
+        {
+          fr: "Ces derniers ne sont deposes qu'apres votre accord si vous consultez le site depuis l'Espace economique europeen, le Royaume Uni ou la Suisse : une banniere vous le demande, et un refus n'enleve rien a ce que vous pouvez faire ici. Votre choix est conserve dans votre navigateur et se revoque en effacant les donnees du site.",
+          en: "The latter are only set after your agreement if you visit from the European Economic Area, the United Kingdom or Switzerland: a banner asks you, and declining takes nothing away from what you can do here. Your choice is kept in your browser and is revoked by clearing site data.",
+        },
+        {
+          fr: "Meta et Microsoft sont etablis aux Etats Unis. Les transferts vers ces deux societes reposent sur le cadre de protection des donnees entre l'Union europeenne et les Etats Unis, auquel elles adherent.",
+          en: "Meta and Microsoft are established in the United States. Transfers to those two companies rely on the European Union to United States Data Privacy Framework, to which they adhere.",
         },
       ],
     },

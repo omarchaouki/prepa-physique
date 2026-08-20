@@ -4,9 +4,9 @@ export const ROLES = ["OWNER", "CLUB_ADMIN", "COACH", "ANALYST", "VIEWER"] as co
 export type Role = (typeof ROLES)[number];
 
 export const ROLE_LABELS: Record<Role, I18nText> = {
-  OWNER: { fr: "Proprietaire", en: "Owner" },
+  OWNER: { fr: "Propriétaire", en: "Owner" },
   CLUB_ADMIN: { fr: "Administrateur du club", en: "Club administrator" },
-  COACH: { fr: "Preparateur physique", en: "Physical coach" },
+  COACH: { fr: "Préparateur physique", en: "Physical coach" },
   ANALYST: { fr: "Analyste", en: "Analyst" },
   VIEWER: { fr: "Lecture seule", en: "Read only" },
 };
@@ -25,9 +25,9 @@ export type Position = (typeof POSITIONS)[number];
 
 export const POSITION_LABELS: Record<Position, I18nText> = {
   GK: { fr: "Gardien", en: "Goalkeeper" },
-  CB: { fr: "Defenseur central", en: "Centre back" },
-  FB: { fr: "Lateral", en: "Full back" },
-  DM: { fr: "Milieu defensif", en: "Defensive midfielder" },
+  CB: { fr: "Défenseur central", en: "Centre back" },
+  FB: { fr: "Latéral", en: "Full back" },
+  DM: { fr: "Milieu défensif", en: "Defensive midfielder" },
   CM: { fr: "Milieu central", en: "Central midfielder" },
   AM: { fr: "Milieu offensif", en: "Attacking midfielder" },
   W: { fr: "Ailier", en: "Winger" },
@@ -52,9 +52,9 @@ export type PlayerStatus = (typeof PLAYER_STATUSES)[number];
 
 export const PLAYER_STATUS_LABELS: Record<PlayerStatus, I18nText> = {
   ACTIVE: { fr: "Disponible", en: "Available" },
-  INJURED: { fr: "Blesse", en: "Injured" },
-  REHAB: { fr: "Reathletisation", en: "Rehabilitation" },
-  LOANED: { fr: "Prete", en: "On loan" },
+  INJURED: { fr: "Blessé", en: "Injured" },
+  REHAB: { fr: "Réathlétisation", en: "Rehabilitation" },
+  LOANED: { fr: "Prête", en: "On loan" },
   LEFT: { fr: "Parti", en: "Left" },
 };
 
@@ -81,7 +81,7 @@ export const PLAN_LIMITS: Record<Plan, { maxTeams: number; maxPlayers: number; l
   FREE: { maxTeams: 1, maxPlayers: 30, label: { fr: "Gratuit", en: "Free" } },
   STARTER: { maxTeams: 3, maxPlayers: 90, label: { fr: "Starter", en: "Starter" } },
   PRO: { maxTeams: 10, maxPlayers: 300, label: { fr: "Pro", en: "Pro" } },
-  ELITE: { maxTeams: 100, maxPlayers: 3000, label: { fr: "Elite", en: "Elite" } },
+  ELITE: { maxTeams: 100, maxPlayers: 3000, label: { fr: "Élite", en: "Elite" } },
 };
 
 /**
@@ -125,11 +125,11 @@ export const JOB_TITLES = [
 export type JobTitle = (typeof JOB_TITLES)[number];
 
 export const JOB_TITLE_LABELS: Record<JobTitle, I18nText> = {
-  COACH: { fr: "Entraineur", en: "Head coach" },
-  STRENGTH_COACH: { fr: "Preparateur physique", en: "Strength and conditioning coach" },
+  COACH: { fr: "Entraîneur", en: "Head coach" },
+  STRENGTH_COACH: { fr: "Préparateur physique", en: "Strength and conditioning coach" },
   DIRECTOR: { fr: "Directeur sportif", en: "Sporting director" },
   ANALYST: { fr: "Analyste", en: "Performance analyst" },
-  MEDICAL: { fr: "Staff medical", en: "Medical staff" },
+  MEDICAL: { fr: "Staff médical", en: "Medical staff" },
   OTHER: { fr: "Autre", en: "Other" },
 };
 

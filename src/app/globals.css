@@ -493,30 +493,186 @@ body {
   }
 
   @supports (animation-timeline: view()) {
-    /* Apparition au defilement pour tout le reste de la page. */
+    /* Apparition au defilement pour tout le reste de la page.
+
+       La plage decide de tout, et elle est plus subtile qu'il n'y parait. Une
+       animation pilotee par le defilement n'a pas de duree : elle se joue
+       entierement dans l'intervalle decrit ici, et si cet intervalle est
+       consomme pendant que l'element est encore au ras du bord bas, elle se
+       joue hors du regard.
+
+       C'est ce qui se passait avec `entry 10% cover 22%`. Sur une fenetre de
+       720 pixels, un bloc de 80 pixels atteignait son opacite pleine alors que
+       son haut etait encore a 544 pixels, soit aux trois quarts de la hauteur
+       de l'ecran. Le mouvement existait, il etait meme mesurable, mais le
+       visiteur ne voyait jamais que le resultat : le contenu deja pose quand
+       son oeil y arrivait. Un defaut plus penible qu'une absence d'animation,
+       parce qu'il coute le rendu sans rien donner en retour.
+
+       Reglee ici, la revelation s'acheve entre la moitie et les deux tiers de
+       la hauteur, la ou le regard se trouve reellement pendant une lecture. */
     .reveal {
       animation: rise linear both;
       animation-timeline: view();
-      animation-range: entry 10% cover 22%;
+      animation-range: entry 20% cover 32%;
     }
 
-    /* Trait de section qui se trace quand la section arrive. */
+    /* Titre revele par un masque. A poser sur un titre, jamais sur un bloc :
+       le masque rogne, donc un conteneur entier verrait ses ombres coupees. */
+    .unveil {
+      animation: unveil linear both;
+      animation-timeline: view();
+      animation-range: entry 25% cover 38%;
+    }
+
+    /* Cascade : chaque enfant part un cran apres le precedent.
+
+       Le decalage vit ici et non dans le balisage. Ecrire un style en ligne par
+       element obligerait a numeroter a la main des listes engendrees par une
+       boucle, et le jour ou l'ordre change, la cascade se joue dans le
+       desordre sans que personne ne s'en apercoive.
+
+       Six enfants suffisent : au dela, un septieme element attendrait presque
+       une demi seconde apres le premier, et l'attente se voit plus que le
+       mouvement. Les suivants gardent donc le dernier decalage. */
+    .cascade > * {
+      animation: rise linear both;
+      animation-timeline: view();
+      animation-range: entry 20% cover 34%;
+    }
+
+    .cascade > *:nth-child(2) { animation-range: entry 16% cover 36%; }
+    .cascade > *:nth-child(3) { animation-range: entry 12% cover 38%; }
+    .cascade > *:nth-child(4) { animation-range: entry 8% cover 40%; }
+    .cascade > *:nth-child(5) { animation-range: entry 4% cover 42%; }
+    .cascade > *:nth-child(n + 6) { animation-range: entry 0% cover 44%; }
+
+    /* Trait de section qui se trace quand la section arrive. Legerement en
+       avance sur les blocs qu'il annonce, ce qui est son role. */
     .rule-draw {
       transform-origin: left;
       animation: draw linear both;
       animation-timeline: view();
-      animation-range: entry 10% cover 20%;
+      animation-range: entry 15% cover 28%;
     }
+  }
+
+  /* -------------------------------------------------------------------------
+     Repli pour les navigateurs sans animations pilotees par le defilement.
+
+     `animation-timeline: view()` n'existe aujourd'hui que dans Chrome et Edge.
+     Ni Safari ni Firefox ne la connaissent, ce qui veut dire qu'un visiteur sur
+     iPhone, c'est a dire l'essentiel du trafic venu d'un fil d'actualite, ne
+     voyait strictement aucun mouvement. Une page qui ne bouge pas la ou toutes
+     les autres bougent parait figee, pas sobre.
+
+     Ce bloc ne s'active que si un script a pose `data-reveal="js"` sur la
+     racine, ce qu'il ne fait qu'apres avoir verifie que le navigateur ignore
+     la version native et qu'il sait observer les intersections. Sans script,
+     sans observateur, ou en mouvement reduit, l'attribut n'existe pas et le
+     contenu reste simplement visible. C'est la regle du fichier : une
+     animation ratee ne doit jamais faire disparaitre un paragraphe.
+
+     Une transition et non une animation, volontairement : une animation se
+     compte depuis le chargement de la page, donc un element atteint au bout
+     d'une minute aurait deja joue la sienne dans le vide.
+  ------------------------------------------------------------------------- */
+  [data-reveal="js"] .reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition:
+      opacity 620ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: var(--d, 0ms);
+  }
+
+  [data-reveal="js"] .reveal.est-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  [data-reveal="js"] .unveil {
+    clip-path: inset(0 0 105% 0);
+    transform: translateY(0.32em);
+    transition:
+      clip-path 760ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 760ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  [data-reveal="js"] .unveil.est-visible {
+    clip-path: inset(0 0 -18% 0);
+    transform: translateY(0);
+  }
+
+  [data-reveal="js"] .cascade > * {
+    opacity: 0;
+    transform: translateY(22px) scale(0.985);
+    transition:
+      opacity 620ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Le repli n'a qu'un seul declenchement pour tout le groupe : le decalage se
+     fait donc au temps, par un retard croissant, la ou la version native se
+     decale dans le defilement. */
+  [data-reveal="js"] .cascade.est-visible > * {
+    opacity: 1;
+    transform: none;
+  }
+
+  [data-reveal="js"] .cascade > *:nth-child(2) { transition-delay: 70ms; }
+  [data-reveal="js"] .cascade > *:nth-child(3) { transition-delay: 140ms; }
+  [data-reveal="js"] .cascade > *:nth-child(4) { transition-delay: 210ms; }
+  [data-reveal="js"] .cascade > *:nth-child(5) { transition-delay: 280ms; }
+  [data-reveal="js"] .cascade > *:nth-child(n + 6) { transition-delay: 350ms; }
+
+  [data-reveal="js"] .rule-draw {
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  [dir="rtl"] [data-reveal="js"] .rule-draw {
+    transform-origin: right;
+  }
+
+  [data-reveal="js"] .rule-draw.est-visible {
+    transform: scaleX(1);
   }
 }
 
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(14px);
+    /* Vingt deux pixels et un leger retrait d'echelle plutot que quatorze
+       pixels seuls. En dessous de vingt, le mouvement se devine sans se voir :
+       il coute le meme rendu et ne produit aucune impression. Le retrait
+       d'echelle est ce qui donne la sensation d'un element qui avance vers le
+       lecteur au lieu de simplement glisser. */
+    opacity: 0;
+    transform: translateY(22px) scale(0.985);
   }
   to {
     opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Revelation par masque, reservee aux titres de section.
+
+   Le texte monte derriere un bord net au lieu d'apparaitre en fondu. C'est le
+   mouvement qui donne le plus d'effet pour le moins de deplacement, parce que
+   l'oeil lit le bord du masque comme une matiere et non comme une opacite.
+
+   `clip-path` est anime seul, sans changement de mise en page : la ligne garde
+   sa place des le premier rendu, donc rien ne saute. */
+@keyframes unveil {
+  from {
+    clip-path: inset(0 0 105% 0);
+    transform: translateY(0.32em);
+  }
+  to {
+    clip-path: inset(0 0 -18% 0);
     transform: translateY(0);
   }
 }
@@ -528,4 +684,388 @@ body {
   to {
     transform: scaleX(1);
   }
+}
+
+/* Remplissage du rail de l'indicateur d'etapes.
+   L'origine suit le sens d'ecriture : en arabe les etapes se lisent de droite a
+   gauche, et un remplissage ancre a gauche partirait a contresens. Il n'existe
+   pas de valeur logique pour transform-origin, d'ou cette regle. */
+.stepper-fill {
+  transform-origin: left;
+}
+
+[dir="rtl"] .stepper-fill {
+  transform-origin: right;
+}
+
+/* ---------------------------------------------------------------------------
+   Arabe.
+
+   Bricolage Grotesque et Fira Sans n'ont aucun glyphe arabe : sans police
+   dediee, le titre de la page publicitaire tomberait sur le repli du systeme,
+   qui varie d'un telephone a l'autre et casse la hierarchie visuelle.
+
+   Cairo couvre l'arabe et le latin, ce qui evite un melange de deux dessins
+   dans une meme phrase quand un nom de test reste en caracteres latins.
+
+   Deux ajustements propres a cette ecriture :
+   . l'interlignage est augmente, les signes diacritiques arabes montent et
+     descendent plus que ceux du latin et se touchent a 0,94 ;
+   . le creage negatif du titre est annule, il colle les lettres liees.
+--------------------------------------------------------------------------- */
+
+[dir="rtl"] {
+  font-family: var(--font-arabic), var(--font-fira-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+[dir="rtl"] .display,
+[dir="rtl"] .display-sm {
+  font-family: var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+[dir="rtl"] .tabular {
+  /* Les chiffres restent latins et alignes, y compris dans une page arabe. */
+  direction: ltr;
+  unicode-bidi: embed;
+}
+
+/* ---------------------------------------------------------------------------
+   Champs des formulaires publics.
+
+   Deux ecarts assumes avec le reste de l'application :
+
+   . seize pixels et non quinze. En dessous de seize, iOS zoome tout seul a la
+     prise de focus, la page saute et se retrouve recadree ; un visiteur venu
+     d'une publicite croit s'etre trompe et referme.
+   . quarante quatre pixels de haut, la cible tactile minimale.
+
+   Le tableau de bord garde sa densite : un preparateur qui saisit trente
+   joueurs a la suite gagne a ce que les lignes soient serrees, un visiteur qui
+   remplit trois champs une seule fois n'y gagne rien.
+--------------------------------------------------------------------------- */
+
+.form-comfortable .field {
+  min-height: 2.75rem;
+  font-size: 1rem;
+}
+
+/* Titre principal de la page publicitaire.
+
+   L'interlignage vit ici et non dans un style en ligne : un style en ligne
+   gagne contre la regle arabe plus bas, et les signes diacritiques d'une ligne
+   venaient toucher la ligne precedente. L'arabe a besoin de plus d'air que le
+   latin, ses signes montent et descendent hors du corps de la lettre. */
+.lp-title {
+  line-height: 1.06;
+}
+
+[dir="rtl"] .lp-title {
+  line-height: 1.42;
+}
+
+/* ---------------------------------------------------------------------------
+   Panneau photographique.
+
+   Un bloc de texte pose sur une photographie assombrie. Il sert au premier
+   ecran de la page publicitaire, ou l'essentiel du trafic arrive depuis un fil
+   d'actualite : la photographie doit porter la promesse avant que la premiere
+   ligne ne soit lue.
+
+   Trois partis pris :
+
+   . Noir et blanc. La scene d'origine est bleue, le bouton d'appel a l'action
+     l'est aussi, et les deux se disputaient l'attention. Desaturee, la
+     photographie devient un fond et le seul element colore de l'ecran est
+     l'action que l'on veut voir cliquer.
+   . Un voile en degrade plutot qu'une opacite uniforme. Une photographie
+     assombrie a plat perd ses noirs et parait grise ; le degrade garde du
+     relief en haut et assure le contraste du texte en bas.
+   . Pleine largeur sur telephone, encadre au dela. Une photographie qui touche
+     les deux bords donne au premier ecran la force d'une affiche, ce qu'un
+     cadre a marges ne donne jamais.
+
+   Les couleurs de ce bloc ne suivent pas le theme clair ou sombre, et c'est
+   voulu : la surface est sombre dans les deux cas, puisque c'est une photo
+   assombrie. Elles restent des variables pour ne pas semer d'hexadecimal dans
+   les composants.
+--------------------------------------------------------------------------- */
+
+:root {
+  --media-base: #070c17;
+  --media-ink: #ffffff;
+  --media-ink-soft: rgba(255, 255, 255, 0.92);
+  --media-ink-faint: rgba(255, 255, 255, 0.78);
+  --media-accent: #cfe0ff;
+  --media-line: rgba(255, 255, 255, 0.18);
+}
+
+.media-panel {
+  position: relative;
+  overflow: hidden;
+  background: var(--media-base);
+  color: var(--media-ink);
+  border-radius: var(--radius-panel);
+}
+
+@media (max-width: 639px) {
+  /* Le decalage compense le padding horizontal de la page, qui vaut 1,25rem. */
+  .media-panel {
+    margin-inline: -1.25rem;
+    border-radius: 0;
+  }
+}
+
+.media-panel__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* La couleur est conservee, et ce n'est pas un renoncement a la sobriete.
+
+     Mesure faite sur les deux cadrages : `grayscale(1)` est exactement neutre
+     en contraste, au millieme pres. La specification des filtres CSS calcule
+     le gris a partir des memes coefficients de luminance que WCAG, donc passer
+     une photographie en noir et blanc ne change pas d'un iota la lisibilite du
+     texte pose dessus. Il ne changeait que la reconnaissance de la scene, et
+     la degradait : sous le voile, trois silhouettes grises ne se lisent plus
+     comme un staff autour d'une tablette.
+
+     La legere saturation fait ressortir les maillots et la pelouse, seuls
+     reperes qui survivent a un voile de cette force. */
+  filter: contrast(1.06) saturate(1.12) brightness(0.96);
+}
+
+.media-panel__scrim {
+  position: absolute;
+  inset: 0;
+  /* Le haut est le plus couvert et non le moins : c'est la que se trouvent le
+     ciel et les gradins, les zones les plus claires de la photographie, et
+     c'est aussi la que se pose le surtitre, qui est le plus petit texte du
+     bloc. Mesure a l'appui, un voile plus faible le faisait tomber sous le
+     rapport de contraste exige.
+
+     Le creux est descendu de 20 a 32 pour cent et allege de 56 a 50 : c'est la
+     bande ou se trouvent les visages du staff et la tablette, donc la seule
+     partie de l'image qui dit quelque chose. Le haut est renforce en echange,
+     sur les gradins, ou il n'y a rien a voir et ou se trouvent les pixels les
+     plus clairs.
+
+     Budget tenu, mesure sur les deux cadrages contre le texte le plus faible
+     du bloc, la note a 78 pour cent de blanc : contraste moyen 9,0 contre 9,2
+     avant, et un demi pour cent de la surface sous 4,5 en paysage, 1,2 pour
+     cent en portrait. Ces pixels sont des projecteurs isoles dans les gradins,
+     ou aucun texte ne se pose. */
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--media-base) 88%, transparent) 0%,
+    color-mix(in srgb, var(--media-base) 50%, transparent) 32%,
+    color-mix(in srgb, var(--media-base) 64%, transparent) 62%,
+    color-mix(in srgb, var(--media-base) 88%, transparent) 100%
+  );
+}
+
+.media-panel__body {
+  position: relative;
+}
+
+.media-kicker {
+  color: var(--media-accent);
+}
+
+.media-lead {
+  color: var(--media-ink-soft);
+}
+
+.media-note {
+  color: var(--media-ink-faint);
+}
+
+.media-rule {
+  border: 0;
+  border-top: 1px solid var(--media-line);
+}
+
+/* ---------------------------------------------------------------------------
+   Bouton WhatsApp flottant.
+
+   Le vert est celui de la marque WhatsApp, et c'est la seule couleur en dur
+   toleree de cette feuille : elle n'appartient pas au theme, elle appartient a
+   WhatsApp. La changer pour l'accent du site rendrait le bouton meconnaissable,
+   or tout son interet est d'etre reconnu sans etre lu.
+
+   Il ne suit pas non plus le theme sombre : le vert et le blanc restent les
+   memes dans les deux, comme sur toutes les surfaces ou cette marque apparait.
+--------------------------------------------------------------------------- */
+.whatsapp-fab {
+  position: fixed;
+  inset-inline-end: 1rem;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 45;
+
+  display: grid;
+  place-items: center;
+  /* Cinquante six pixels : au dessus des quarante huit exiges par Material,
+     parce que ce bouton se touche souvent d'une main qui tient un telephone. */
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 999px;
+
+  background: #25d366;
+  color: #ffffff;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.18),
+    0 2px 4px rgba(0, 0, 0, 0.12);
+
+  transition:
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 200ms ease-out;
+}
+
+/* La barre d'inscription de la page d'atterrissage occupe le bas de l'ecran sur
+   telephone. Le bouton passe au dessus d'elle plutot que dessous. */
+.whatsapp-fab[data-raised] {
+  bottom: calc(5.25rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 1024px) {
+  /* Au dela, cette barre n'existe plus : le bouton redescend. */
+  .whatsapp-fab[data-raised] {
+    bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+
+  .whatsapp-fab {
+    inset-inline-end: 1.5rem;
+    bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+}
+
+@media (hover: hover) {
+  .whatsapp-fab:hover {
+    transform: scale(1.06);
+    box-shadow:
+      0 8px 20px rgba(0, 0, 0, 0.22),
+      0 3px 6px rgba(0, 0, 0, 0.14);
+  }
+}
+
+.whatsapp-fab:active {
+  transform: scale(0.96);
+}
+
+/* L'anneau de focus est blanc double de vert fonce : sur le vert de la marque,
+   l'anneau d'accent du site ne se detacherait pas. */
+.whatsapp-fab:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(7, 94, 84, 0.65);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .whatsapp-fab {
+    transition: none;
+  }
+
+  .whatsapp-fab:hover,
+  .whatsapp-fab:active {
+    transform: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Cadre des photographies et des captures.
+
+   Un filet, une ombre courte et un lisere interne. Le lisere n'est pas une
+   coquetterie : sur une capture d'ecran a fond blanc, un simple filet gris
+   laisse l'image se fondre dans le panneau et le cadre disparait. Le lisere
+   pose une seconde arete, un pixel a l'interieur, qui tient le bord quelle que
+   soit la clarte de l'image.
+
+   Le mouvement est un dezoom lent pendant l'entree dans l'ecran. Il est
+   volontairement plus long et plus ample que l'apparition des textes : une
+   image qui bouge au meme rythme qu'un paragraphe donne l'impression d'un
+   diaporama, alors qu'un dezoom qui se termine apres le texte se lit comme une
+   mise au point.
+--------------------------------------------------------------------------- */
+.shot {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-panel);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-panel);
+}
+
+.shot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 7%, transparent);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .shot__image {
+      animation: shot-zoom linear both;
+      animation-timeline: view();
+      /* Plus large que la plage des textes, et sur `cover` des le depart :
+         le dezoom doit couvrir toute la traversee de l'ecran, pas seulement
+         l'entree. */
+      animation-range: cover 0% cover 62%;
+    }
+  }
+
+  /* Repli pour Safari et Firefox, sur le meme observateur que le reste de la
+     page. La classe est posee sur le cadre, le mouvement porte sur l'image. */
+  [data-reveal="js"] .shot .shot__image {
+    transform: scale(1.06);
+    transition: transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  [data-reveal="js"] .shot.est-visible .shot__image {
+    transform: none;
+  }
+}
+
+@keyframes shot-zoom {
+  from {
+    transform: scale(1.06);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Options du selecteur de devise.
+
+   La pastille reste petite parce qu'elle est posee a cote d'un montant, pas au
+   milieu d'un formulaire : trois boutons de quarante quatre pixels de haut y
+   pesaient plus lourd que le prix qu'ils servent a lire.
+
+   La zone touchee, elle, fait bien quarante quatre pixels dans les deux sens.
+   Elle est etendue par un pseudo element centre sur le bouton, technique
+   equivalente au hitSlop des applications natives : le doigt vise une cible
+   conforme, l'oeil voit une pastille discrete. Sans cela, trois cibles de
+   vingt huit pixels de haut collees l'une a l'autre produisent exactement le
+   genre d'erreur de frappe qui fait changer de devise sans le vouloir.
+--------------------------------------------------------------------------- */
+.currency-option {
+  position: relative;
+}
+
+.currency-option::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  min-width: 44px;
+  min-height: 44px;
+  width: 100%;
+  height: 100%;
 }

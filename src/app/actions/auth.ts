@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { prisma } from "@/lib/db";
@@ -17,6 +18,8 @@ import {
 import { CURRENCY_COOKIE, LOCALE_COOKIE, type Role } from "@/lib/constants";
 import { getT } from "@/lib/i18n/server";
 import { cookies } from "next/headers";
+
+import { CURRENCIES, type Currency } from "@/lib/marketing";
 
 export interface ActionState {
   error?: string;
@@ -150,6 +153,85 @@ const passwordSchema = z
     path: ["confirm"],
   });
 
+/**
+ * Coordonnees du compte, modifiables par son titulaire.
+ *
+ * Le telephone etait demande a l'inscription et enregistre correctement, mais
+ * il n'apparaissait ensuite sur aucun ecran : ni celui du titulaire, ni celui
+ * du proprietaire. Une donnee que personne ne peut relire ni corriger vaut une
+ * donnee perdue, et c'est bien ainsi qu'elle etait percue.
+ *
+ * Le role, l'adresse electronique et le club ne sont pas ici, et c'est
+ * volontaire. Ils determinent des droits ou servent d'identifiant de connexion :
+ * les laisser modifier depuis un ecran de reglages ouvrirait une elevation de
+ * privileges deguisee en changement de coordonnees. Ils restent du ressort de
+ * l'administrateur du club et du proprietaire.
+ */
+const profileSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  // Volontairement permissif : les formats nationaux sont trop varies pour
+  // etre valides serieusement, et un refus sur un numero pourtant correct
+  // agace bien plus qu'il ne protege. On borne la longueur et on ecarte ce qui
+  // ne ressemble pas du tout a un numero.
+  phone: z
+    .string()
+    .trim()
+    .max(30)
+    .regex(/^[0-9+().\s-]*$/u, "phone")
+    .optional(),
+  jobTitle: z.string().trim().max(80).optional(),
+});
+
+export async function updateProfileAction(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const t = await getT();
+  const user = await getCurrentUser();
+  if (!user) return { error: t("manage.forbidden") };
+
+  const parsed = profileSchema.safeParse({
+    name: String(formData.get("name") ?? ""),
+    phone: String(formData.get("phone") ?? ""),
+    jobTitle: String(formData.get("jobTitle") ?? ""),
+  });
+
+  if (!parsed.success) {
+    const probleme = parsed.error.issues[0];
+    return {
+      error:
+        probleme?.path[0] === "phone" ? t("settings.phoneInvalid") : t("settings.profileInvalid"),
+    };
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      name: parsed.data.name,
+      phone: parsed.data.phone || null,
+      jobTitle: parsed.data.jobTitle || null,
+    },
+  });
+
+  await logAudit({
+    userId: user.id,
+    actorEmail: user.email,
+    organizationId: user.organizationId,
+    action: "UPDATE",
+    entity: "User",
+    entityId: user.id,
+    // Le numero lui meme n'entre pas dans le journal : c'est une donnee
+    // personnelle, et le journal se consulte depuis le panneau proprietaire.
+    meta: { champs: "profil", telephoneRenseigne: Boolean(parsed.data.phone) },
+  });
+
+  // Le nom du titulaire s'affiche dans l'entete et la barre laterale de toute
+  // la zone applicative, pas seulement sur cet ecran.
+  revalidatePath("/app", "layout");
+
+  return { success: t("settings.profileSaved") };
+}
+
 export async function changePasswordAction(
   _previous: ActionState,
   formData: FormData,
@@ -271,7 +353,11 @@ export async function stopImpersonationAction() {
  * decide seulement du montant affiche sur la page des tarifs. Elle vit donc
  * dans un cookie et non en base, et reste valable un an.
  */
-export async function setCurrencyAction(currency: "MAD" | "EUR") {
+export async function setCurrencyAction(currency: Currency) {
   const store = await cookies();
+  // La liste fait foi : une valeur arrivee d'ailleurs que du selecteur ne doit
+  // pas se retrouver dans le cookie, ou chaque page tenterait ensuite de mettre
+  // en forme un montant dans une devise que Intl ne connait pas.
+  if (!(CURRENCIES as readonly string[]).includes(currency)) return;
   store.set(CURRENCY_COOKIE, currency, { path: "/", maxAge: 60 * 60 * 24 * 365 });
 }

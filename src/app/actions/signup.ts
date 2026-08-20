@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { hashPassword, logAudit, requestIp, setSessionCookie, signSession } from "@/lib/auth";
 import { JOB_TITLES, JOB_TITLE_LABELS, PLAN_LIMITS, type JobTitle } from "@/lib/constants";
 import { slugify } from "@/lib/utils";
+import { SIGNUP_DONE_PARAM } from "@/components/tracking/events";
 import type { ActionState } from "./auth";
 
 /**
@@ -43,16 +44,29 @@ import type { ActionState } from "./auth";
  * casser la conversion depuis une publicite. La consequence est qu'il y aura de
  * faux comptes, et qu'il faudra les nettoyer de temps en temps depuis le
  * panneau proprietaire.
+ *
+ * ---------------------------------------------------------------------------
+ * Pourquoi les erreurs sont des cles et non des phrases
+ * ---------------------------------------------------------------------------
+ *
+ * Cette action est appelee depuis deux surfaces qui ne parlent pas les memes
+ * langues : la page d'inscription, en francais et en anglais, et la page
+ * publicitaire, qui ajoute l'arabe. Une action serveur ne sait pas dans quelle
+ * langue la page qui l'appelle a ete rendue.
+ *
+ * Elle renvoie donc `error.emailTaken` et le formulaire traduit. Les phrases
+ * ecrites en dur ici auraient toujours ignore au moins une des trois langues,
+ * et un visiteur arabophone aurait recu son refus en francais.
  */
 
 const schema = z
   .object({
-    club: z.string().trim().min(2, "Le nom du club est requis").max(80),
-    name: z.string().trim().min(2, "Votre nom est requis").max(80),
-    email: z.string().trim().toLowerCase().email("Adresse de courriel invalide"),
+    club: z.string().trim().min(2, "error.clubRequired").max(80),
+    name: z.string().trim().min(2, "error.nameRequired").max(80),
+    email: z.string().trim().toLowerCase().email("error.emailInvalid"),
     password: z
       .string()
-      .min(10, "Le mot de passe doit contenir au moins dix caracteres")
+      .min(10, "error.passwordShort")
       .max(200),
     confirm: z.string(),
     /** Code ISO du pays, choisi dans la liste et non tape librement. */
@@ -61,10 +75,10 @@ const schema = z
     jobTitleOther: z.string().trim().max(80).optional(),
     phone: z.string().trim().max(30).optional(),
     /** Champ leurre : un humain ne le voit pas, donc ne le remplit pas. */
-    website: z.string().max(0, "Inscription refusee").optional(),
+    website: z.string().max(0, "error.rejected").optional(),
   })
   .refine((data) => data.password === data.confirm, {
-    message: "Les deux mots de passe ne correspondent pas",
+    message: "error.passwordMismatch",
     path: ["confirm"],
   });
 
@@ -111,7 +125,7 @@ export async function signUpAction(
 ): Promise<ActionState> {
   const ip = (await requestIp()) ?? "inconnu";
   if (rateLimited(ip)) {
-    return { error: "Trop d'inscriptions depuis ce reseau. Reessayez dans une heure." };
+    return { error: "error.rateLimit" };
   }
 
   const parsed = schema.safeParse({
@@ -128,7 +142,7 @@ export async function signUpAction(
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Donnees invalides" };
+    return { error: parsed.error.issues[0]?.message ?? "error.invalid" };
   }
 
   const { club, name, email, password, country, phone } = parsed.data;
@@ -145,9 +159,7 @@ export async function signUpAction(
 
   const domain = email.split("@")[1] ?? "";
   if (DISPOSABLE.has(domain)) {
-    return {
-      error: "Cette adresse est temporaire. Utilisez l'adresse de votre club.",
-    };
+    return { error: "error.disposable" };
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -155,9 +167,7 @@ export async function signUpAction(
     // Le message ne dit pas si le compte existe : cela renseignerait un
     // visiteur sur les adresses deja inscrites. Il oriente vers la connexion,
     // ce qui aide la personne concernee sans rien apprendre aux autres.
-    return {
-      error: "Impossible de creer ce compte avec cette adresse. Essayez de vous connecter.",
-    };
+    return { error: "error.emailTaken" };
   }
 
   let slug = slugify(club);
@@ -221,5 +231,9 @@ export async function signUpAction(
   });
   await setSessionCookie(token);
 
-  redirect("/app");
+  // Le marqueur declenche l'evenement de conversion cote navigateur, puis
+  // s'efface de la barre d'adresse. Voir components/tracking/events.tsx : le
+  // pixel ne peut pas etre appele depuis une action serveur, et une conversion
+  // comptee au mauvais endroit fausse l'optimisation de toute la campagne.
+  redirect(`/app?${SIGNUP_DONE_PARAM}=1`);
 }

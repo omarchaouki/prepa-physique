@@ -27,14 +27,14 @@ export const nordicTest: TestDefinition = {
   shortName: { fr: "Nordic", en: "Nordic" },
   category: "STRENGTH",
   description: {
-    fr: "Force excentrique maximale des ischio jambiers. C'est le marqueur de terrain le plus directement associe au risque de lesion des ischio jambiers.",
+    fr: "Force excentrique maximale des ischio jambiers. C'est le marqueur de terrain le plus directement associe au risque de lésion des ischio jambiers.",
     en: "Maximal eccentric hamstring strength. The field marker most directly associated with hamstring injury risk.",
   },
   protocol: {
-    fr: "Genoux sur un coussin, chevilles maintenues par le dynamometre. Le joueur resiste a la chute vers l'avant le plus longtemps possible, bras croises sur la poitrine, bassin en extension. Trois repetitions, pic de force retenu.",
+    fr: "Genoux sur un coussin, chevilles maintenues par le dynamomètre. Le joueur résiste à la chute vers l'avant le plus longtemps possible, bras croisés sur la poitrine, bassin en extension. Trois répétitions, pic de force retenu.",
     en: "Kneeling on a pad, ankles held by the dynamometer. The athlete resists the forward fall as long as possible, arms crossed on the chest, hips extended. Three repetitions, peak force retained.",
   },
-  equipment: { fr: "Dynamometre Nordic (NordBord ou equivalent)", en: "Nordic dynamometer (NordBord or equivalent)" },
+  equipment: { fr: "Dynamomètre Nordic (NordBord ou équivalent)", en: "Nordic dynamometer (NordBord or equivalent)" },
   durationMin: 10,
   reference: "Opar et al. 2015, Bourne et al. 2018",
   needsContext: ["bodyMassKg"],
@@ -64,18 +64,18 @@ export const nordicTest: TestDefinition = {
 
 export const groinTest: TestDefinition = {
   key: "groin_squeeze",
-  name: { fr: "Force isometrique des adducteurs et abducteurs", en: "Isometric adductor and abductor strength" },
+  name: { fr: "Force isométrique des adducteurs et abducteurs", en: "Isometric adductor and abductor strength" },
   shortName: { fr: "Adducteurs", en: "Groin" },
   category: "STRENGTH",
   description: {
-    fr: "Test de reference de la prevention de la pubalgie. Un rapport adducteurs sur abducteurs bas precede souvent la douleur inguinale.",
+    fr: "Test de référence de la prévention de la pubalgie. Un rapport adducteurs sur abducteurs bas précède souvent la douleur inguinale.",
     en: "Reference test for groin injury prevention. A low adductor to abductor ratio often precedes groin pain.",
   },
   protocol: {
-    fr: "Allonge sur le dos, hanches et genoux flechis a 45 et 90 degres, dynamometre place entre les genoux pour l'adduction et a l'exterieur pour l'abduction. Trois contractions maximales de cinq secondes, meilleur essai retenu.",
+    fr: "Allonge sur le dos, hanches et genoux fléchis à 45 et 90 degrés, dynamomètre place entre les genoux pour l'adduction et à l'extérieur pour l'abduction. Trois contractions maximales de cinq secondes, meilleur essai retenu.",
     en: "Supine, hips and knees flexed at 45 and 90 degrees, dynamometer between the knees for adduction and outside for abduction. Three maximal five second contractions, best trial retained.",
   },
-  equipment: { fr: "Dynamometre a main ou groin bar", en: "Handheld dynamometer or groin bar" },
+  equipment: { fr: "Dynamomètre à main ou groin bar", en: "Handheld dynamometer or groin bar" },
   durationMin: 10,
   reference: "Esteve et al. 2020, Thorborg et al. 2011",
   needsContext: ["bodyMassKg"],
@@ -118,25 +118,25 @@ export const groinTest: TestDefinition = {
 
 export const imtpTest: TestDefinition = {
   key: "imtp",
-  name: { fr: "Traction isometrique a mi cuisse", en: "Isometric mid thigh pull" },
+  name: { fr: "Traction isométrique à mi cuisse", en: "Isometric mid thigh pull" },
   shortName: { fr: "IMTP", en: "IMTP" },
   category: "STRENGTH",
   description: {
-    fr: "Mesure de la force maximale globale sans charge externe mobilisee, donc sans risque technique. Combinee au saut, elle indique si le joueur exprime la force dont il dispose.",
+    fr: "Mesure de la force maximale globale sans charge externe mobilisée, donc sans risque technique. Combinée au saut, elle indique si le joueur exprime la force dont il dispose.",
     en: "Measures global maximal force with no external load moved, hence no technical risk. Combined with the jump it shows whether the athlete expresses the force available.",
   },
   protocol: {
-    fr: "Barre bloquee a hauteur de mi cuisse, angles de hanche entre 140 et 150 degres et de genou entre 125 et 145 degres. Consigne : pousser le sol le plus fort et le plus vite possible pendant cinq secondes. Trois essais.",
+    fr: "Barre bloquée à hauteur de mi cuisse, angles de hanche entre 140 et 150 degrés et de genou entre 125 et 145 degrés. Consigne : pousser le sol le plus fort et le plus vite possible pendant cinq secondes. Trois essais.",
     en: "Bar fixed at mid thigh height, hip angle 140 to 150 degrees and knee angle 125 to 145 degrees. Instruction: push the ground as hard and as fast as possible for five seconds. Three trials.",
   },
-  equipment: { fr: "Cage avec barre bloquee et plateforme de force", en: "Rack with fixed bar and force plate" },
+  equipment: { fr: "Cage avec barre bloquée et plateforme de force", en: "Rack with fixed bar and force plate" },
   durationMin: 12,
   reference: "Comfort et al. 2019",
   needsContext: ["bodyMassKg"],
   fields: [
     { key: "peakForce", label: { fr: "Pic de force", en: "Peak force" }, unit: "N", type: "number", step: 1, min: 500, max: 6000 },
-    { key: "force100", label: { fr: "Force a 100 ms", en: "Force at 100 ms" }, unit: "N", type: "number", step: 1, min: 100, max: 4000, optional: true },
-    { key: "force200", label: { fr: "Force a 200 ms", en: "Force at 200 ms" }, unit: "N", type: "number", step: 1, min: 100, max: 5000, optional: true },
+    { key: "force100", label: { fr: "Force à 100 ms", en: "Force at 100 ms" }, unit: "N", type: "number", step: 1, min: 100, max: 4000, optional: true },
+    { key: "force200", label: { fr: "Force à 200 ms", en: "Force at 200 ms" }, unit: "N", type: "number", step: 1, min: 100, max: 5000, optional: true },
     { key: "cmjPeakForce", label: { fr: "Pic de force au CMJ", en: "CMJ peak force" }, unit: "N", type: "number", step: 1, min: 500, max: 5000, optional: true, help: { fr: "Permet de calculer l'indice de force dynamique.", en: "Used to compute the dynamic strength index." } },
   ],
   compute: (raw, ctx) => {
@@ -171,15 +171,15 @@ export const imtpTest: TestDefinition = {
 
 export const oneRmTest: TestDefinition = {
   key: "one_rm",
-  name: { fr: "Maximum a une repetition estime", en: "Estimated one repetition maximum" },
+  name: { fr: "Maximum à une répétition estimé", en: "Estimated one repetition maximum" },
   shortName: { fr: "1RM", en: "1RM" },
   category: "STRENGTH",
   description: {
-    fr: "Estimation du maximum a partir d'une serie sous maximale. Evite le risque d'un test a l'echec tout en fournissant une base de prescription fiable.",
+    fr: "Estimation du maximum à partir d'une série sous maximale. Évite le risque d'un test à l'échec tout en fournissant une base de prescription fiable.",
     en: "Maximum estimated from a submaximal set. Avoids the risk of a true maximal test while providing a reliable prescription basis.",
   },
   protocol: {
-    fr: "Apres echauffement progressif, realiser une serie a l'echec technique avec une charge permettant entre 3 et 8 repetitions. Au dela de 10 repetitions l'estimation perd en fiabilite.",
+    fr: "Après échauffement progressif, réaliser une série à l'échec technique avec une charge permettant entre 3 et 8 répétitions. Au delà de 10 répétitions l'estimation perd en fiabilité.",
     en: "After a progressive warm up, perform a set to technical failure with a load allowing 3 to 8 repetitions. Beyond 10 repetitions the estimate loses reliability.",
   },
   equipment: { fr: "Barre et disques, cage de squat", en: "Barbell and plates, squat rack" },
@@ -193,16 +193,16 @@ export const oneRmTest: TestDefinition = {
       unit: "",
       type: "select",
       options: [
-        { value: "back_squat", label: { fr: "Squat arriere", en: "Back squat" } },
+        { value: "back_squat", label: { fr: "Squat arrière", en: "Back squat" } },
         { value: "front_squat", label: { fr: "Squat avant", en: "Front squat" } },
-        { value: "deadlift", label: { fr: "Souleve de terre", en: "Deadlift" } },
+        { value: "deadlift", label: { fr: "Soulevé de terre", en: "Deadlift" } },
         { value: "hip_thrust", label: { fr: "Hip thrust", en: "Hip thrust" } },
-        { value: "bench_press", label: { fr: "Developpe couche", en: "Bench press" } },
+        { value: "bench_press", label: { fr: "Développé couche", en: "Bench press" } },
         { value: "bulgarian_split_squat", label: { fr: "Fente bulgare", en: "Bulgarian split squat" } },
       ],
     },
     { key: "weight", label: { fr: "Charge", en: "Load" }, unit: "kg", type: "number", step: 0.5, min: 10, max: 400 },
-    { key: "reps", label: { fr: "Repetitions realisees", en: "Repetitions performed" }, unit: "", type: "number", step: 1, min: 1, max: 15 },
+    { key: "reps", label: { fr: "Répétitions réalisées", en: "Repetitions performed" }, unit: "", type: "number", step: 1, min: 1, max: 15 },
   ],
   compute: (raw, ctx) => {
     const weight = num(raw, "weight");
@@ -246,14 +246,14 @@ export const loadVelocityTest: TestDefinition = {
   shortName: { fr: "Charge vitesse", en: "Load velocity" },
   category: "STRENGTH",
   description: {
-    fr: "Relation lineaire entre la charge et la vitesse d'execution. Permet d'estimer le maximum sans aller a l'echec et de prescrire a la vitesse plutot qu'au pourcentage.",
+    fr: "Relation linéaire entre la charge et la vitesse d'exécution. Permet d'estimer le maximum sans aller à l'échec et de prescrire à la vitesse plutôt qu'au pourcentage.",
     en: "Linear relationship between load and movement velocity. Estimates the maximum without going to failure and allows velocity based prescription.",
   },
   protocol: {
-    fr: "Quatre a cinq charges croissantes, deux a trois repetitions par charge, vitesse moyenne concentrique la plus elevee retenue. Recuperation de trois minutes entre les charges.",
+    fr: "Quatre à cinq charges croissantes, deux à trois répétitions par charge, vitesse moyenne concentrique la plus élevée retenue. Récupération de trois minutes entre les charges.",
     en: "Four to five incremental loads, two to three repetitions per load, highest mean concentric velocity retained. Three minutes rest between loads.",
   },
-  equipment: { fr: "Encodeur lineaire ou accelerometre de barre", en: "Linear encoder or barbell accelerometer" },
+  equipment: { fr: "Encodeur linéaire ou accéléromètre de barre", en: "Linear encoder or barbell accelerometer" },
   durationMin: 25,
   reference: "Gonzalez Badillo & Sanchez Medina 2010",
   fields: [
@@ -274,7 +274,7 @@ export const loadVelocityTest: TestDefinition = {
       min: 0.1,
       max: 0.6,
       optional: true,
-      help: { fr: "0.31 au squat, 0.17 au developpe couche.", en: "0.31 for squat, 0.17 for bench press." },
+      help: { fr: "0.31 au squat, 0.17 au développé couche.", en: "0.31 for squat, 0.17 for bench press." },
     },
   ],
   compute: (raw) => {

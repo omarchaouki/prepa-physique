@@ -18,6 +18,7 @@
     "verify:db": "tsx scripts/check-connection.ts",
     "owner:ensure": "tsx scripts/ensure-owner.ts",
     "typecheck": "tsc --noEmit",
+    "web:favicon": "python scripts/generate-favicon.py",
     "android:assets": "python scripts/generate-android-assets.py",
     "android:sync": "cap sync android",
     "android:apk": "node scripts/build-apk.mjs",

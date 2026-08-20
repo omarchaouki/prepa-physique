@@ -63,6 +63,7 @@ export const adminNavigation = (t: Translator): NavSection[] => [
       { href: "/admin/organizations", label: t("nav.organizations"), icon: "organizations" },
       { href: "/admin/users", label: t("nav.users"), icon: "users" },
       { href: "/admin/audit", label: t("nav.audit"), icon: "audit" },
+      { href: "/admin/tracking", label: t("nav.tracking"), icon: "tracking" },
     ],
   },
   {

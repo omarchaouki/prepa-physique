@@ -33,7 +33,14 @@ export const PROOF = {
 export const CONTACT = {
   sales: process.env.CONTACT_SALES_EMAIL?.trim() || "sales@lamsaa.ma",
   support: process.env.CONTACT_EMAIL?.trim() || "contact@lamsaa.ma",
-  whatsapp: process.env.CONTACT_WHATSAPP?.trim() || null,
+  /**
+   * Numero WhatsApp, chiffres uniquement, indicatif compris et sans le plus.
+   *
+   * C'est la forme qu'attend wa.me. Un plus, une espace ou un tiret laisses ici
+   * produisent un lien que WhatsApp ouvre sur une conversation vide, sans dire
+   * pourquoi : la panne la plus discrete de toute cette page.
+   */
+  whatsapp: process.env.CONTACT_WHATSAPP?.replace(/[^0-9]/gu, "") || "13612180920",
   brand: process.env.BRAND_NAME?.trim() || "Lamsaa",
 } as const;
 
@@ -67,15 +74,29 @@ export const COMPANY = {
  * illisible pour le client et intenable pour la facturation. Chaque montant est
  * une decision commerciale, pas le resultat d'un calcul.
  */
-export const CURRENCIES = ["MAD", "EUR"] as const;
+/**
+ * Devises proposees, dans l'ordre d'affichage du selecteur.
+ *
+ * Le dirham vient en premier parce que c'est le marche vise et la devise de
+ * facturation. L'euro et le dollar suivent, pour le visiteur qui veut situer
+ * le prix dans la sienne.
+ */
+export const CURRENCIES = ["MAD", "EUR", "USD"] as const;
 export type Currency = (typeof CURRENCIES)[number];
 
 export const CURRENCY_LABELS: Record<Currency, { code: string; name: { fr: string; en: string } }> = {
   MAD: { code: "DH", name: { fr: "Dirham marocain", en: "Moroccan dirham" } },
   EUR: { code: "EUR", name: { fr: "Euro", en: "Euro" } },
+  USD: { code: "USD", name: { fr: "Dollar americain", en: "US dollar" } },
 };
 
-/** Devise proposee par defaut selon la langue lue. */
+/**
+ * Devise proposee par defaut selon la langue lue.
+ *
+ * Le dirham reste le defaut du francophone, l'euro celui de l'anglophone. Le
+ * dollar n'est jamais propose d'office : il ne correspond a aucune des deux
+ * langues servies, et ne se choisit donc qu'a la main.
+ */
 export const defaultCurrency = (locale: "fr" | "en"): Currency => (locale === "fr" ? "MAD" : "EUR");
 
 /**
@@ -87,12 +108,19 @@ export const defaultCurrency = (locale: "fr" | "en"): Currency => (locale === "f
  * A CONFIRMER PAR OMAR. Les montants en dirham suivent des paliers ronds du
  * marche local plutot que la conversion stricte de l'euro : c'est un choix
  * commercial, pas une erreur d'arrondi.
+ *
+ * Les montants en dollar sont poses au meme titre, et ils n'engagent personne
+ * tant qu'Omar ne les a pas valides : 45, 109 et 279 sont des paliers ronds
+ * legerement au dessus de l'euro, comme le veut l'usage sur ce marche. Ils sont
+ * ecrits en dur, jamais convertis : un taux qui bouge ferait varier le prix
+ * affiche d'un jour a l'autre, et deux visiteurs verraient deux prix pour la
+ * meme offre.
  */
 export const PRICING: Record<Plan, { monthly: Record<Currency, number | null>; highlight: boolean }> = {
-  FREE: { monthly: { MAD: 0, EUR: 0 }, highlight: false },
-  STARTER: { monthly: { MAD: 399, EUR: 39 }, highlight: false },
-  PRO: { monthly: { MAD: 999, EUR: 99 }, highlight: true },
-  ELITE: { monthly: { MAD: 2499, EUR: 249 }, highlight: false },
+  FREE: { monthly: { MAD: 0, EUR: 0, USD: 0 }, highlight: false },
+  STARTER: { monthly: { MAD: 399, EUR: 39, USD: 45 }, highlight: false },
+  PRO: { monthly: { MAD: 999, EUR: 99, USD: 109 }, highlight: true },
+  ELITE: { monthly: { MAD: 2499, EUR: 249, USD: 279 }, highlight: false },
 };
 
 /** Delai de reponse annonce au visiteur, en heures ouvrees. */
@@ -104,6 +132,12 @@ export const RESPONSE_HOURS = 24;
  * Le dirham est ecrit avec son sigle usuel plutot qu'avec le code ISO : un
  * client marocain lit « 399 DH », pas « 399 MAD ». `Intl` produit la seconde
  * forme, on la remplace donc.
+ *
+ * Le dollar demande la meme correction, en francais seulement. `Intl` y ecrit
+ * « 45 $US », qui est la forme correcte de la typographie francaise mais que
+ * personne ne lit sur une page de tarifs : le visiteur cherche un signe dollar,
+ * et le « US » accole se lit comme une coquille. En anglais la forme rendue est
+ * deja « $45 », qui convient.
  */
 export const formatPrice = (
   amount: number,
@@ -116,7 +150,9 @@ export const formatPrice = (
     maximumFractionDigits: 0,
   }).format(amount);
 
-  return currency === "MAD" ? formatted.replace(/MAD\s?/u, "").trim() + " DH" : formatted;
+  if (currency === "MAD") return formatted.replace(/MAD\s?/u, "").trim() + " DH";
+  if (currency === "USD") return formatted.replace(/\$US/u, "$");
+  return formatted;
 };
 
 export const mailtoSales = (subject: string): string =>

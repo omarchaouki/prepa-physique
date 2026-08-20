@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { KeyRound, Languages, User } from "lucide-react";
+import { IdCard, KeyRound, Languages, User } from "lucide-react";
 
 import { requireUser, type CurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -10,6 +10,7 @@ import { PageHeader, Panel, PanelHeader } from "@/components/ui/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LanguageChoice } from "@/components/shell/language-switcher";
 import { ChangePasswordForm } from "./change-password-form";
+import { ProfileForm } from "./profile-form";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ async function AccountDetails({ user }: { user: CurrentUser }) {
   const [record, teams, t, locale, tag] = await Promise.all([
     prisma.user.findUnique({
       where: { id: user.id },
-      select: { createdAt: true, lastLoginAt: true, jobTitle: true },
+      select: { createdAt: true, lastLoginAt: true, jobTitle: true, phone: true },
     }),
     prisma.teamMember.findMany({
       where: { userId: user.id },
@@ -36,6 +37,7 @@ async function AccountDetails({ user }: { user: CurrentUser }) {
           [t("login.email"), user.email],
           [t("settings.role"), ROLE_LABELS[user.role][locale]],
           [t("settings.jobTitle"), record?.jobTitle ?? t("settings.jobTitleNone")],
+          [t("settings.phone"), record?.phone ?? t("settings.phoneNone")],
           [t("settings.organization"), user.organizationName ?? t("settings.organizationNone")],
           [t("settings.createdAt"), record?.createdAt ? formatDate(record.createdAt, tag) : "—"],
           [
@@ -77,6 +79,22 @@ async function AccountDetails({ user }: { user: CurrentUser }) {
   );
 }
 
+/**
+ * Valeurs initiales du formulaire de coordonnees.
+ *
+ * Lecture separee de `AccountDetails`, dans sa propre frontiere Suspense : les
+ * deux panneaux sont cote a cote, et une seule requete lente ne doit pas
+ * retarder l'autre.
+ */
+async function ProfileFields({ userId, name }: { userId: string; name: string }) {
+  const record = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { phone: true, jobTitle: true },
+  });
+
+  return <ProfileForm name={name} phone={record?.phone ?? null} jobTitle={record?.jobTitle ?? null} />;
+}
+
 export default async function SettingsPage() {
   const [user, t, locale] = await Promise.all([requireUser(), getT(), getLocale()]);
 
@@ -111,6 +129,17 @@ export default async function SettingsPage() {
               icon={<Languages size={16} />}
             />
             <LanguageChoice current={locale} />
+          </Panel>
+
+          <Panel>
+            <PanelHeader
+              title={t("settings.profile")}
+              subtitle={t("settings.profileSubtitle")}
+              icon={<IdCard size={16} />}
+            />
+            <Suspense fallback={<Skeleton className="h-56 w-full" />}>
+              <ProfileFields userId={user.id} name={user.name} />
+            </Suspense>
           </Panel>
 
           <Panel>

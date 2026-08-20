@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!--
+    Favicon vectoriel du site.
+
+    Le commentaire est a l'interieur de l'element, et il doit y rester. Next
+    mesure ce fichier avec image-size, qui reconnait un SVG en lisant ses
+    premiers octets : un commentaire pose avant la balise ouvrante fait echouer
+    la detection et la page entiere repond 500, avec le message trompeur
+    "is not a valid image file".
+
+    Le signe est celui de src/components/marketing/wordmark.tsx et de l'icone
+    Android : la ligne de pouls de lucide sur le bleu de la marque. Le trace vit
+    sur une grille de 24 unites, comme dans les trois generateurs Python, et la
+    transformation le place au centre d'une tuile de 64.
+
+    Les navigateurs qui savent lire un favicon vectoriel preferent ce fichier au
+    .ico, et l'affichent le plus souvent a seize pixels dans l'onglet. Le
+    reglage retenu est donc celui du format 32 de scripts/generate-favicon.py,
+    glyphe a 78 % et trait de 3,4 unites : plus gras que dans l'entete du site,
+    ou le meme signe occupe 53 % avec un trait de 2,2, et plus leger que le
+    format 16 du .ico, parce que ce fichier sert aussi les grandes tailles.
+
+    Les couleurs sont ecrites en dur, sans variable ni media query. Un favicon
+    est rendu hors de la page, ou aucune variable CSS du site n'existe, et la
+    tuile bleue se detache aussi bien sur un onglet clair que sombre.
+  -->
+  <rect width="64" height="64" rx="14" fill="#1e40af" />
+  <g transform="translate(7.04 7.04) scale(2.08)">
+    <path
+      d="M22 12h-4l-3 9L9 3l-3 9H2"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="3.4"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </g>
+</svg>

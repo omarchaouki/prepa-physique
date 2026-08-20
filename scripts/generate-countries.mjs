@@ -4,14 +4,17 @@ const codes = [
 ];
 const fr = new Intl.DisplayNames(["fr"], { type: "region" });
 const en = new Intl.DisplayNames(["en"], { type: "region" });
+// L'arabe ne sert que sur la page publique, qui est publiee en trois langues.
+// L'application connectee, elle, reste en francais et en anglais.
+const ar = new Intl.DisplayNames(["ar"], { type: "region" });
 const seen = new Set();
 const rows = [];
 for (const code of codes) {
   if (seen.has(code)) continue;
   seen.add(code);
-  const nfr = fr.of(code), nen = en.of(code);
-  if (!nfr || !nen || nfr === code) continue;
-  rows.push({ code, fr: nfr, en: nen });
+  const nfr = fr.of(code), nen = en.of(code), nar = ar.of(code);
+  if (!nfr || !nen || !nar || nfr === code) continue;
+  rows.push({ code, fr: nfr, en: nen, ar: nar });
 }
 rows.sort((a, b) => a.fr.localeCompare(b.fr, "fr"));
 console.log(JSON.stringify(rows));

@@ -11,6 +11,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   Menu,
+  Radar,
   ScrollText,
   Settings,
   ShieldCheck,
@@ -35,6 +36,7 @@ const ICONS = {
   users: Users,
   audit: ScrollText,
   shield: ShieldCheck,
+  tracking: Radar,
 } as const;
 
 export interface NavItem {

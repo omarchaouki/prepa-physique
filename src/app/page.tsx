@@ -22,6 +22,8 @@ import { getLocale, getT, pick } from "@/lib/i18n/server";
 import type { Locale } from "@/lib/i18n/dictionary";
 import { LanguageSwitcher } from "@/components/shell/language-switcher";
 import { Wordmark } from "@/components/marketing/wordmark";
+import { WhatsAppButton } from "@/components/marketing/whatsapp-button";
+import { Shot } from "@/components/marketing/shot";
 import { CurrencySwitcher } from "@/components/marketing/currency-switcher";
 import { getCurrency } from "@/lib/currency-server";
 
@@ -77,54 +79,6 @@ export async function generateMetadata(): Promise<Metadata> {
 // ---------------------------------------------------------------------------
 // Briques locales
 // ---------------------------------------------------------------------------
-
-/**
- * Photographie servie en plusieurs largeurs.
- *
- * `next/image` n'est pas utilise volontairement : il exige `sharp` sur le
- * serveur, alors que le recadrage et la compression sont deja faits en amont
- * par scripts/generate-marketing-images.py. Le cadre porte le rapport d'aspect,
- * ce qui reserve la place avant l'arrivee de l'image et evite tout decalage.
- */
-function Shot({
-  base,
-  widths,
-  sizes,
-  alt,
-  frame,
-  priority = false,
-  objectPosition,
-}: {
-  base: string;
-  widths: number[];
-  sizes: string;
-  alt: string;
-  frame: string;
-  priority?: boolean;
-  objectPosition?: string;
-}) {
-  const srcSet = widths.map((width) => `/marketing/${base}-${width}.webp ${width}w`).join(", ");
-
-  return (
-    <div
-      className={`relative overflow-hidden ${frame}`}
-      style={{ borderRadius: "var(--radius-panel)", background: "var(--surface-sunken)" }}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element -- images deja optimisees, voir en tete de fichier */}
-      <img
-        src={`/marketing/${base}-${widths[widths.length - 1]}.webp`}
-        srcSet={srcSet}
-        sizes={sizes}
-        alt={alt}
-        loading={priority ? "eager" : "lazy"}
-        decoding="async"
-        fetchPriority={priority ? "high" : "auto"}
-        className="absolute inset-0 size-full object-cover"
-        style={{ objectPosition: objectPosition ?? "center" }}
-      />
-    </div>
-  );
-}
 
 /** Intitule de section : un mot en capitales, precede d'un trait qui se trace. */
 function Eyebrow({ children }: { children: React.ReactNode }) {
@@ -320,8 +274,25 @@ export default async function HomePage() {
         {/* ---------------------------------------------------------------- */}
         {/* Hero                                                              */}
         {/* ---------------------------------------------------------------- */}
-        <section className="mx-auto max-w-6xl px-5 pt-12 sm:pt-20 pb-10">
-          <div className="grid lg:grid-cols-12 gap-9 lg:gap-8 items-end">
+        {/* L'air au dessus du titre reste genereux sur telephone, ou il separe
+            la promesse de l'entete collante. Au dela, il est resserre : sur un
+            ordinateur portable, cinq rem au dessus d'un titre de cette taille
+            repoussaient la ligne d'accroche et le premier bouton sous la ligne
+            de flottaison, ce qui est le seul defaut vraiment couteux d'un
+            premier ecran. */}
+        <section className="mx-auto max-w-6xl px-5 pt-12 sm:pt-14 lg:pt-16 pb-10">
+          {/* Les deux colonnes s'etirent a la meme hauteur, et l'image epouse
+              celle du texte.
+
+              L'alignement precedent, `items-end`, calait les deux colonnes par
+              le bas. Comme la photographie etait plus haute que le texte de
+              cent trente deux pixels, ce vide se reportait entierement au
+              dessus du surtitre : un trou en haut a gauche du premier ecran,
+              exactement la ou le regard se pose en premier.
+
+              En laissant l'etirement par defaut et en donnant a l'image la
+              hauteur de sa colonne, il n'y a plus de vide a repartir. */}
+          <div className="grid lg:grid-cols-12 gap-9 lg:gap-8">
             <div className="lg:col-span-7">
               <p
                 className="rise text-[0.6875rem] font-semibold uppercase tracking-[0.16em] mb-6"
@@ -375,7 +346,10 @@ export default async function HomePage() {
                 widths={[480, 720, 1080]}
                 sizes="(min-width: 1024px) 420px, calc(100vw - 2.5rem)"
                 alt={t("home.heroImageAlt")}
-                frame="aspect-[5/3] lg:aspect-[4/5]"
+                // Sur telephone la photographie garde un rapport fixe, elle est
+                // seule sur sa ligne. Au dela elle prend la hauteur de la
+                // colonne de texte, et le recadrage se fait par `object-cover`.
+                frame="aspect-[5/3] lg:aspect-auto lg:h-full lg:min-h-[26rem]"
                 objectPosition="center 30%"
                 priority
               />
@@ -459,9 +433,9 @@ export default async function HomePage() {
               </p>
             </div>
 
-            <ol className="mt-12">
+            <ol className="cascade mt-12">
               {gaps.map((gap, index) => (
-                <li key={gap} className="reveal">
+                <li key={gap}>
                   <hr className="rule" />
                   <div className="row-quiet flex items-baseline gap-5 sm:gap-8 py-6">
                     <span
@@ -488,9 +462,12 @@ export default async function HomePage() {
         <section className="mx-auto max-w-6xl px-5 py-16 sm:py-20">
           <Eyebrow>{t("home.methodTitle")}</Eyebrow>
 
-          <ol className="grid sm:grid-cols-2 lg:grid-cols-4 gap-x-8">
+          {/* `cascade` : les quatre etapes entrent l'une apres l'autre, ce qui
+              raconte leur ordre. Le decalage vit dans globals.css, plus dans un
+              style en ligne indexe sur la boucle. */}
+          <ol className="cascade grid sm:grid-cols-2 lg:grid-cols-4 gap-x-8">
             {steps.map((step, index) => (
-              <li key={step.title} className="reveal pt-5" style={{ ["--d" as string]: `${index * 60}ms` }}>
+              <li key={step.title} className="pt-5">
                 <hr className="rule mb-5" />
                 <span
                   className="display block tabular"
@@ -529,7 +506,7 @@ export default async function HomePage() {
 
           <div className="reveal grid lg:grid-cols-12 gap-7 lg:gap-10 mt-10">
             <div className="lg:col-span-5">
-              <h2 className="display-sm" style={{ fontSize: "clamp(1.625rem, 3.6vw, 2.125rem)" }}>
+              <h2 className="unveil display-sm" style={{ fontSize: "clamp(1.625rem, 3.6vw, 2.125rem)" }}>
                 {t("home.fieldTitle")}
               </h2>
               <p
@@ -566,7 +543,7 @@ export default async function HomePage() {
           <div className="mx-auto max-w-6xl px-5">
             <div className="reveal max-w-2xl mb-10">
               <Eyebrow>{t("home.navFeatures")}</Eyebrow>
-              <h2 className="display-sm" style={{ fontSize: "clamp(1.75rem, 4.2vw, 2.5rem)" }}>
+              <h2 className="unveil display-sm" style={{ fontSize: "clamp(1.75rem, 4.2vw, 2.5rem)" }}>
                 {t("home.measureTitle")}
               </h2>
               <p
@@ -621,7 +598,7 @@ export default async function HomePage() {
             </div>
 
             <div className="lg:col-span-7 order-1 lg:order-2">
-              <h2 className="display-sm" style={{ fontSize: "clamp(1.75rem, 4vw, 2.375rem)" }}>
+              <h2 className="unveil display-sm" style={{ fontSize: "clamp(1.75rem, 4vw, 2.375rem)" }}>
                 {t("home.staffTitle")}
               </h2>
               <p
@@ -698,7 +675,12 @@ export default async function HomePage() {
                     <figcaption className="mt-5 text-[0.8125rem]">
                       <span className="font-semibold">{review.name}</span>
                       <span className="block mt-0.5" style={{ color: "var(--text-muted)" }}>
-                        {pick(review.role, locale)} . {review.club}
+                        {/* Le club n'est nomme que si la personne a pu le faire
+                            autoriser : sans ce test, un avis sans club affichait
+                            un point suivi du vide. */}
+                        {review.club
+                          ? `${pick(review.role, locale)} . ${review.club}`
+                          : pick(review.role, locale)}
                       </span>
                     </figcaption>
                   </div>
@@ -715,7 +697,7 @@ export default async function HomePage() {
           <div className="reveal flex flex-wrap items-end justify-between gap-5 mb-10">
             <div className="max-w-2xl">
               <Eyebrow>{t("home.navPlans")}</Eyebrow>
-              <h2 className="display-sm" style={{ fontSize: "clamp(1.75rem, 4.2vw, 2.5rem)" }}>
+              <h2 className="unveil display-sm" style={{ fontSize: "clamp(1.75rem, 4.2vw, 2.5rem)" }}>
                 {t("home.plansTitle")}
               </h2>
               <p
@@ -1042,13 +1024,21 @@ export default async function HomePage() {
           <p>
             © {new Date().getFullYear()} {COMPANY.legalName ?? brand}. {t("home.footerRights")}
           </p>
-          <p>
-            {COMPANY.address ?? (
-              <span style={{ color: "var(--warning)" }}>{t("home.footerCompanyMissing")}</span>
-            )}
-          </p>
+          {/* Rien ne s'affiche tant que l'adresse n'est pas renseignee.
+
+              Il y avait ici un rappel jaune demandant de completer le fichier
+              .env du serveur. C'etait une note de chantier laissee sur la seule
+              page que voit un inconnu : elle ne s'adressait pas au visiteur,
+              elle lui apprenait seulement que le site n'est pas fini. Le rappel
+              vit desormais dans .env.example et dans docs/HANDOFF.md, ou il
+              s'adresse a qui peut agir. */}
+          {COMPANY.address ? <p>{COMPANY.address}</p> : null}
         </div>
       </footer>
+
+      {/* Pas de `raised` ici : la page d'accueil n'a pas de barre collee en bas,
+          le bouton peut donc rester dans le coin. */}
+      <WhatsAppButton label={t("home.contactWhatsapp")} message={t("home.demoSubject")} />
     </LocaleProvider>
   );
 }

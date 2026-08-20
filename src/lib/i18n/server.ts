@@ -3,6 +3,11 @@ import { cookies, headers } from "next/headers";
 
 import { LOCALE_COOKIE } from "@/lib/constants";
 import { createTranslator, localeTag, type Locale, type Translator } from "./dictionary";
+import {
+  createMarketingTranslator,
+  type MarketingLocale,
+  type MarketingTranslator,
+} from "./marketing";
 
 /**
  * Choisit la langue a partir de l'entete envoye par le navigateur.
@@ -66,3 +71,67 @@ export const getLocaleTag = cache(async (): Promise<string> => localeTag(await g
 /** Choisit la bonne variante d'un texte du catalogue scientifique. */
 export const pick = <T extends { fr: string; en: string }>(text: T, locale: Locale): string =>
   locale === "en" ? text.en : text.fr;
+
+// ---------------------------------------------------------------------------
+// Page publicitaire
+// ---------------------------------------------------------------------------
+
+/**
+ * Meme lecture d'entete, mais avec l'arabe dans les langues reconnues.
+ *
+ * La fonction est dupliquee plutot que generalisee, et c'est volontaire :
+ * l'ensemble des langues acceptees est precisement ce qui distingue les deux
+ * surfaces. Un parametre partage laisserait croire qu'il suffit de le changer
+ * pour que l'application connectee parle arabe, ce qui est faux, ses sept cents
+ * cles n'existent qu'en deux langues.
+ */
+const marketingFromAcceptLanguage = (header: string | null): MarketingLocale | null => {
+  if (!header) return null;
+
+  const ranked = header
+    .split(",")
+    .map((part) => {
+      const [tag, ...parameters] = part.trim().split(";");
+      const quality = parameters
+        .map((parameter) => parameter.trim())
+        .find((parameter) => parameter.startsWith("q="));
+      return {
+        code: tag.trim().slice(0, 2).toLowerCase(),
+        quality: quality ? Number.parseFloat(quality.slice(2)) || 0 : 1,
+      };
+    })
+    .sort((a, b) => b.quality - a.quality);
+
+  const match = ranked.find(
+    (entry) => entry.code === "fr" || entry.code === "en" || entry.code === "ar",
+  );
+  return match ? (match.code as MarketingLocale) : null;
+};
+
+/**
+ * Langue de la page publicitaire.
+ *
+ * Meme ordre que pour l'application : un choix explicite, puis le navigateur,
+ * puis le francais. C'est cette seconde marche qui compte pour une campagne :
+ * un preparateur marocain dont le telephone est en arabe voit la page en arabe
+ * sans avoir rien a chercher, et une seconde d'hesitation en moins sur une page
+ * de publicite se paie en inscriptions.
+ *
+ * Le cookie est le meme que celui de l'application. Un visiteur qui a choisi
+ * l'arabe ici et qui ouvre ensuite l'application la verra en francais, puisque
+ * `getLocale` ne reconnait pas cette valeur et retombe sur son repli. C'est le
+ * comportement voulu tant que l'application n'est pas traduite.
+ */
+export const getMarketingLocale = cache(async (): Promise<MarketingLocale> => {
+  const store = await cookies();
+  const chosen = store.get(LOCALE_COOKIE)?.value;
+  if (chosen === "en" || chosen === "fr" || chosen === "ar") return chosen;
+
+  const requestHeaders = await headers();
+  return marketingFromAcceptLanguage(requestHeaders.get("accept-language")) ?? "fr";
+});
+
+/** Traducteur de la page publicitaire, pret a l'emploi cote serveur. */
+export const getMarketingT = cache(
+  async (): Promise<MarketingTranslator> => createMarketingTranslator(await getMarketingLocale()),
+);

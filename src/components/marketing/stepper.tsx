@@ -19,12 +19,21 @@ import { Check } from "lucide-react";
  * . Le trait de progression se remplit par une transformation, jamais par un
  *   changement de largeur : cela evite un recalcul de mise en page a chaque
  *   image de l'animation.
+ *
+ * `surface` n'est pas un detail cosmetique. Chaque etape peint un rectangle
+ * derriere son rond pour interrompre le rail, qui traverse sinon la rangee de
+ * part en part et depasse a gauche du premier rond comme a droite du dernier.
+ * Ce rectangle doit porter exactement la couleur du fond sur lequel
+ * l'indicateur est pose, sinon il se voit. C'est ce qui arrivait sur la page
+ * d'atterrissage : le formulaire y est sur un panneau blanc, l'indicateur
+ * peignait le gris de la page, et chaque etape trainait sa plaque grise.
  */
 export function Stepper({
   steps,
   current,
   onGoTo,
   positionLabel,
+  surface = "var(--surface-page)",
 }: {
   steps: string[];
   /** Index de l'etape en cours, a partir de zero. */
@@ -32,6 +41,14 @@ export function Stepper({
   onGoTo?: (index: number) => void;
   /** Gabarit du type « Etape {current} sur {total} », pour la voix. */
   positionLabel: string;
+  /**
+   * Fond sur lequel l'indicateur est pose, pour l'interruption du rail.
+   *
+   * Par defaut celui de la page, qui vaut pour /inscription. La page
+   * d'atterrissage pose son formulaire sur un panneau et doit passer
+   * `var(--surface-panel)`.
+   */
+  surface?: string;
 }) {
   const progress = steps.length > 1 ? current / (steps.length - 1) : 1;
 
@@ -56,7 +73,7 @@ export function Stepper({
         />
         <span
           aria-hidden="true"
-          className="absolute left-0 right-0 origin-left"
+          className="absolute left-0 right-0 stepper-fill"
           style={{
             top: "1.125rem",
             height: 2,
@@ -80,7 +97,7 @@ export function Stepper({
                   height: "2.25rem",
                   fontSize: "0.875rem",
                   fontWeight: 700,
-                  background: done || active ? "var(--accent)" : "var(--surface-panel)",
+                  background: done || active ? "var(--accent)" : surface,
                   color: done || active ? "var(--accent-text)" : "var(--text-muted)",
                   border: `2px solid ${done || active ? "var(--accent)" : "var(--border-strong)"}`,
                   transition: "background-color 220ms ease-out, border-color 220ms ease-out",
@@ -105,7 +122,7 @@ export function Stepper({
             <li
               key={step}
               className="relative flex flex-col items-center"
-              style={{ background: "var(--surface-page)", padding: "0 0.5rem" }}
+              style={{ background: surface, padding: "0 0.5rem" }}
               aria-current={active ? "step" : undefined}
             >
               {reachable ? (
