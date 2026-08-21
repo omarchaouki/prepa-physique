@@ -6,6 +6,7 @@ import { SplashGate } from "@/components/shell/splash-gate";
 import { getLocale, getMarketingLocale } from "@/lib/i18n/server";
 import { getRegion } from "@/lib/region";
 import { getTracking } from "@/lib/tracking";
+import { getSiteUrlObject } from "@/lib/site-url";
 import { ConsentGate } from "@/components/tracking/consent";
 import { TrackingEvents } from "@/components/tracking/events";
 
@@ -37,18 +38,27 @@ const firaCode = Fira_Code({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "Prepa Physique",
-  description:
-    "Plateforme de preparation physique football : tests, profils joueurs, analyses et recommandations basees sur la litterature scientifique.",
-  /**
-   * Adresse absolue des images de partage. Sans elle, une carte de partage
-   * envoyee sur WhatsApp ou LinkedIn pointe vers localhost et n'affiche rien.
-   * APP_URL est deja la variable qui porte l'adresse publique, celle gravee dans
-   * la coque Android.
-   */
-  metadataBase: new URL(process.env.APP_URL?.trim() || "http://localhost:3000"),
-};
+/**
+ * Metadonnees racine.
+ *
+ * `generateMetadata` et non un objet constant, parce que `metadataBase` se
+ * deduit desormais de la requete quand `APP_URL` n'est pas posee. Voir
+ * src/lib/site-url.ts : la version precedente retombait sur localhost, et
+ * toutes les cartes de partage du site annoncaient une image que ni Facebook
+ * ni WhatsApp ne pouvaient atteindre.
+ *
+ * Le passage en fonction ne coute rien ici : la mise en page lit deja les
+ * cookies et les entetes pour choisir la langue, donc le rendu de cette
+ * application est dynamique de toute facon.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Prepa Physique",
+    description:
+      "Plateforme de preparation physique football : tests, profils joueurs, analyses et recommandations basees sur la litterature scientifique.",
+    metadataBase: await getSiteUrlObject(),
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",

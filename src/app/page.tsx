@@ -61,6 +61,7 @@ const fill = (text: string, values: Record<string, string | number>): string =>
 
 export async function generateMetadata(): Promise<Metadata> {
   const [t, locale] = await Promise.all([getT(), getLocale()]);
+  const ALT_PARTAGE = t("home.finalImageAlt");
   const title = `${CONTACT.brand} . ${t("home.heroLine1")} ${t("home.heroLine2")}`;
 
   return {
@@ -70,9 +71,27 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title,
       description: t("home.heroBody"),
-      images: ["/marketing/touche-1280.webp"],
+      // Carte de partage : JPEG en 1200 x 630, pas la photographie WebP du
+      // site. Les robots de Facebook et de WhatsApp ne lisent pas tous le
+      // WebP, et ils recadrent en 1,91 pour 1. Voir share_card() dans
+      // scripts/generate-marketing-images.py.
+      images: [
+        {
+          url: "/marketing/partage.jpg",
+          width: 1200,
+          height: 630,
+          alt: ALT_PARTAGE,
+        },
+      ],
       type: "website",
       locale: locale === "en" ? "en_GB" : "fr_FR",
+      siteName: CONTACT.brand,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: t("home.heroBody"),
+      images: ["/marketing/partage.jpg"],
     },
   };
 }

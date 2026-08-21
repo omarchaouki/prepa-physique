@@ -118,6 +118,45 @@ def crop_box(source: str, name: str, left: float, top: float, right: float,
         export(image.crop(box), name, widths)
 
 
+def share_card(source: str, name: str, top_ratio: float = 0.5) -> None:
+    """
+    Produit la carte de partage, en 1200 x 630 et en JPEG.
+
+    Deux ecarts avec le reste du fichier, et les deux sont imposes de
+    l'exterieur.
+
+    Le rapport d'abord. Facebook, LinkedIn et WhatsApp recadrent une image de
+    partage en 1,91 pour 1. La photographie large du site est en 2,13 : servie
+    telle quelle, elle se fait rogner par le reseau, sur un axe que nous ne
+    choisissons pas. Autant cadrer ici.
+
+    Le format ensuite. Tout le site est en WebP, qui pese deux fois moins. Mais
+    les robots de partage ne le lisent pas tous, et WhatsApp en particulier
+    laisse souvent l'apercu sans image. Une carte de partage est vue une fois
+    par lien envoye, jamais par un visiteur du site : les cent kilo octets
+    d'un JPEG n'y coutent rien, alors qu'un apercu vide coute un clic.
+    """
+    with Image.open(ROOT / source) as image:
+        image = image.convert("RGB")
+        width, height = image.size
+        target_ratio = 1200 / 630
+
+        if width / height > target_ratio:
+            crop_width = round(height * target_ratio)
+            left = round((width - crop_width) / 2)
+            image = image.crop((left, 0, left + crop_width, height))
+        else:
+            crop_height = round(width / target_ratio)
+            top = round(height * top_ratio - crop_height / 2)
+            top = max(0, min(top, height - crop_height))
+            image = image.crop((0, top, width, top + crop_height))
+
+        card = image.resize((1200, 630), Image.LANCZOS)
+        path = OUT / f"{name}.jpg"
+        card.save(path, "JPEG", quality=86, optimize=True, progressive=True)
+        print(f"  {path.relative_to(ROOT)}  1200x630  {path.stat().st_size // 1024} ko")
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
 
@@ -131,6 +170,9 @@ def main() -> None:
 
     print("bord de touche (bande large) :")
     wide("app3.jfif", "touche")
+
+    print("carte de partage :")
+    share_card("app3.jfif", "partage")
 
     # -----------------------------------------------------------------------
     # Page publicitaire
