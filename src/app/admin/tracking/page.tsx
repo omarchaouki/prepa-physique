@@ -4,6 +4,7 @@ import { requireOwner } from "@/lib/auth";
 import { getT } from "@/lib/i18n/server";
 import { getTracking } from "@/lib/tracking";
 import { PageHeader, Panel, PanelHeader } from "@/components/ui/primitives";
+import { hasCapiToken } from "@/lib/capi";
 import { TrackingForm } from "./tracking-form";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,11 @@ export const dynamic = "force-dynamic";
  */
 export default async function TrackingPage() {
   await requireOwner();
-  const [t, tracking] = await Promise.all([getT(), getTracking()]);
+  const [t, tracking, capiConfigured] = await Promise.all([
+    getT(),
+    getTracking(),
+    hasCapiToken(),
+  ]);
 
   const events = [
     { name: "PageView", label: t("tracking.eventPageView") },
@@ -38,6 +43,8 @@ export default async function TrackingPage() {
           <TrackingForm
             facebookPixelId={tracking.facebookPixelId ?? ""}
             clarityProjectId={tracking.clarityProjectId ?? ""}
+            // Un booleen, jamais le jeton : voir le commentaire du composant.
+            capiConfigured={capiConfigured}
           />
         </Panel>
 

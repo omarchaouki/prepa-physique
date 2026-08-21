@@ -91,13 +91,25 @@ export const CURRENCY_LABELS: Record<Currency, { code: string; name: { fr: strin
 };
 
 /**
- * Devise proposee par defaut selon la langue lue.
+ * Devise proposee par defaut.
  *
- * Le dirham reste le defaut du francophone, l'euro celui de l'anglophone. Le
- * dollar n'est jamais propose d'office : il ne correspond a aucune des deux
- * langues servies, et ne se choisit donc qu'a la main.
+ * Le dirham pour tout le monde, quelle que soit la langue lue. La regle
+ * precedente donnait l'euro a l'anglophone, ce qui partait d'une bonne
+ * intention et se trompait de public : l'anglais est aussi la langue de
+ * beaucoup de staffs au Maroc et dans le Golfe, et un club de Casablanca qui
+ * lit la page en anglais voyait un prix en euro pour un service facture en
+ * dirham.
+ *
+ * La devise de facturation est donc celle qui s'affiche, et le selecteur reste
+ * a cote du tarif pour situer le montant en euro ou en dollar en un geste. Le
+ * choix du visiteur, lui, prime toujours : il vit dans un cookie, lu par
+ * `getCurrency`.
+ *
+ * Le parametre de langue est conserve bien qu'inutilise : il documente que
+ * cette decision depend d'une politique commerciale et non d'un hasard, et il
+ * evite de toucher les six appelants le jour ou la regle redevient variable.
  */
-export const defaultCurrency = (locale: "fr" | "en"): Currency => (locale === "fr" ? "MAD" : "EUR");
+export const defaultCurrency = (_locale: "fr" | "en"): Currency => "MAD";
 
 /**
  * Tarifs mensuels, hors taxes.

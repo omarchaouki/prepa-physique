@@ -73,6 +73,10 @@ export const MARKETING_MESSAGES = {
   "nav.faq": ["Questions", "Questions", "أسئلة"],
   "nav.login": ["Se connecter", "Log in", "تسجيل الدخول"],
   "nav.cta": ["Commencer", "Get started", "ابدأ الآن"],
+  "nav.theme": ["Thème", "Theme", "المظهر"],
+  "nav.themeLight": ["Thème clair", "Light theme", "مظهر فاتح"],
+  "nav.themeDark": ["Thème sombre", "Dark theme", "مظهر داكن"],
+  "nav.themeSystem": ["Thème du système", "System theme", "مظهر النظام"],
   "nav.language": ["Changer de langue", "Change language", "تغيير اللغة"],
 
   // --- Hero -----------------------------------------------------------------
@@ -235,6 +239,11 @@ export const MARKETING_MESSAGES = {
   ],
 
   // --- Le produit -----------------------------------------------------------
+  "product.altOutil": [
+    "Gros plan sur une tablette montrant une vue de terrain et une carte de chaleur, tenue par un membre du staff, deux téléphones affichant l'application de part et d'autre",
+    "Close up of a tablet showing a pitch view and a heat map, held by a staff member, with two phones running the app on either side",
+    "لقطة قريبة للوحي يعرض ملعبًا وخريطة حرارية، يحمله أحد أفراد الطاقم",
+  ],
   "product.altBrief": [
     "Préparateur physique présentant les résultats à son groupe sur une tablette",
     "Fitness coach presenting results to the squad on a tablet",

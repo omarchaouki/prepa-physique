@@ -907,10 +907,14 @@ body {
 
   display: grid;
   place-items: center;
-  /* Cinquante six pixels : au dessus des quarante huit exiges par Material,
-     parce que ce bouton se touche souvent d'une main qui tient un telephone. */
-  width: 3.5rem;
-  height: 3.5rem;
+  /* Soixante quatre pixels sur telephone, bien au dessus des quarante huit
+     exiges par Material. Ce bouton se touche d'une main qui tient l'appareil,
+     souvent en marchant au bord d'un terrain, et il est le seul moyen de
+     contact direct de la page : le sous dimensionner coute des conversations.
+     Il redescend a cinquante six sur grand ecran, ou le pointeur est precis et
+     ou un rond de soixante quatre pixels devient encombrant. */
+  width: 4rem;
+  height: 4rem;
   border-radius: 999px;
 
   background: #25d366;
@@ -922,6 +926,14 @@ body {
   transition:
     transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 200ms ease-out;
+}
+
+/* Le glyphe suit la taille du bouton. Les attributs width et height poses sur
+   la balise servent de repli avant l'arrivee de la feuille de style, la regle
+   ci dessous a le dernier mot. */
+.whatsapp-fab svg {
+  width: 30px;
+  height: 30px;
 }
 
 /* La barre d'inscription de la page d'atterrissage occupe le bas de l'ecran sur
@@ -939,6 +951,13 @@ body {
   .whatsapp-fab {
     inset-inline-end: 1.5rem;
     bottom: max(1.5rem, env(safe-area-inset-bottom));
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+
+  .whatsapp-fab svg {
+    width: 26px;
+    height: 26px;
   }
 }
 

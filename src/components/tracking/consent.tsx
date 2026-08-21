@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 import type { Region } from "@/lib/region";
 import type { TrackingSettings } from "@/lib/tracking";
 import { createMarketingTranslator, direction, type MarketingLocale } from "@/lib/i18n/marketing";
 import { TrackingScripts } from "./scripts";
+import { isMeasuredPath } from "./paths";
 
 /**
  * Porte d'entree des balises de mesure.
@@ -97,10 +99,17 @@ export function ConsentGate({
   region: Region;
   locale: MarketingLocale;
 }) {
+  const pathname = usePathname();
+  const mesure = isMeasuredPath(pathname);
+
   const [decision, setDecision] = useState<Decision | null>(null);
   const [asking, setAsking] = useState(false);
 
   useEffect(() => {
+    // Aucune balise, aucune banniere, dans l'application et le panneau
+    // proprietaire. Voir ./paths.ts pour la raison.
+    if (!mesure) return;
+
     // Rien a mesurer, rien a demander. Une banniere de consentement pour des
     // balises qui n'existent pas serait le pire des deux mondes.
     if (!tracking.facebookPixelId && !tracking.clarityProjectId) return;
@@ -128,7 +137,7 @@ export function ConsentGate({
     }
 
     setDecision("granted");
-  }, [region, tracking.facebookPixelId, tracking.clarityProjectId]);
+  }, [mesure, region, tracking.facebookPixelId, tracking.clarityProjectId]);
 
   const choose = (value: Decision) => {
     try {
@@ -144,7 +153,7 @@ export function ConsentGate({
 
   return (
     <>
-      {decision === "granted" ? <TrackingScripts {...tracking} /> : null}
+      {mesure && decision === "granted" ? <TrackingScripts {...tracking} /> : null}
 
       {asking ? (
         <div

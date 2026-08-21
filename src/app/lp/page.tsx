@@ -22,6 +22,7 @@ import { TEST_DEFINITIONS } from "@/lib/sports-science/catalog";
 import { Wordmark } from "@/components/marketing/wordmark";
 import { Shot } from "@/components/marketing/shot";
 import { MarketingLocaleSwitcher } from "@/components/marketing/locale-switcher";
+import { ThemeSwitch } from "@/components/shell/theme-toggle";
 import { StickyCta } from "@/components/marketing/sticky-cta";
 import { WhatsAppButton } from "@/components/marketing/whatsapp-button";
 import { CurrencySwitcher } from "@/components/marketing/currency-switcher";
@@ -332,6 +333,18 @@ export default async function LandingPage() {
 
           <div className="flex items-center gap-2 ms-auto">
             <MarketingLocaleSwitcher current={locale} label={t("nav.language")} />
+            {/* `ThemeSwitch` et non `ThemeToggle` : cette page a son propre
+                dictionnaire et n'est pas enveloppee par LocaleProvider, donc
+                un composant qui appellerait useT() y planterait. */}
+            <ThemeSwitch
+              compact
+              labels={{
+                group: t("nav.theme"),
+                light: t("nav.themeLight"),
+                dark: t("nav.themeDark"),
+                system: t("nav.themeSystem"),
+              }}
+            />
             <span className="hidden sm:inline-flex">
               <Link href="/login" className="btn btn-secondary" style={{ minHeight: "2.75rem" }}>
                 {t("nav.login")}
@@ -842,6 +855,25 @@ export default async function LandingPage() {
             ))}
             <hr className="rule" />
           </div>
+        </section>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* Respiration avant l'appel final                                   */}
+        {/* ---------------------------------------------------------------- */}
+        {/* Quatre sections de texte s'enchainaient sans une seule image :
+            science, tarifs, questions, puis l'appel. C'est le plus long
+            passage de la page, et il tombe au moment ou le visiteur doit
+            decider. Une bande large remet le produit sous les yeux juste avant
+            qu'on le lui demande. */}
+        <section className="mx-auto max-w-6xl px-5 pb-14">
+          <Shot
+            base="lp-outil"
+            widths={[640, 960, 1440]}
+            sizes="(min-width: 1024px) 1088px, calc(100vw - 2.5rem)"
+            alt={t("product.altOutil")}
+            frame="aspect-[16/10] sm:aspect-[21/9]"
+            objectPosition="center 45%"
+          />
         </section>
 
         {/* ---------------------------------------------------------------- */}

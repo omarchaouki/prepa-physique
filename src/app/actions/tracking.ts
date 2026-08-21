@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { logAudit, requireOwner } from "@/lib/auth";
 import { CLARITY_PATTERN, PIXEL_PATTERN, TRACKING_KEYS } from "@/lib/tracking";
+import { CAPI_TOKEN_KEY } from "@/lib/capi";
 import type { ActionState } from "./auth";
 
 /**
@@ -33,6 +34,25 @@ const schema = z.object({
     .refine((value) => value === "" || CLARITY_PATTERN.test(value), {
       message: "tracking.clarityInvalid",
     }),
+  /**
+   * Jeton de l'API Conversions.
+   *
+   * Il ne suit pas la regle des deux autres champs, ou le vide efface. Un
+   * secret ne se reaffiche pas dans un formulaire : le champ arrive donc
+   * toujours vide, et un envoi vide veut dire "ne change rien". Sans cette
+   * exception, ouvrir la page des reglages et enregistrer une correction de
+   * pixel effacerait le jeton sans que personne ne s'en apercoive, et la
+   * mesure serveur s'arreterait en silence.
+   *
+   * L'effacement volontaire passe par la case dediee.
+   */
+  capiAccessToken: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || /^[A-Za-z0-9_-]{40,300}$/u.test(value), {
+      message: "tracking.capiInvalid",
+    }),
+  capiClear: z.boolean(),
 });
 
 /** Ecrit une valeur, ou efface la ligne si elle est vide. */
@@ -53,6 +73,8 @@ export async function saveTrackingAction(
   const parsed = schema.safeParse({
     facebookPixelId: String(formData.get("facebookPixelId") ?? ""),
     clarityProjectId: String(formData.get("clarityProjectId") ?? ""),
+    capiAccessToken: String(formData.get("capiAccessToken") ?? ""),
+    capiClear: formData.get("capiClear") === "on",
   });
 
   if (!parsed.success) {
@@ -61,6 +83,12 @@ export async function saveTrackingAction(
 
   await write(TRACKING_KEYS.facebookPixelId, parsed.data.facebookPixelId);
   await write(TRACKING_KEYS.clarityProjectId, parsed.data.clarityProjectId);
+
+  if (parsed.data.capiClear) {
+    await write(CAPI_TOKEN_KEY, "");
+  } else if (parsed.data.capiAccessToken) {
+    await write(CAPI_TOKEN_KEY, parsed.data.capiAccessToken);
+  }
 
   await logAudit({
     userId: owner.id,
@@ -75,6 +103,14 @@ export async function saveTrackingAction(
     meta: {
       facebookPixelId: parsed.data.facebookPixelId || "(efface)",
       clarityProjectId: parsed.data.clarityProjectId || "(efface)",
+      // Le jeton n'est jamais journalise, meme partiellement : contrairement
+      // aux identifiants ci dessus, il ouvre l'ecriture sur le compte
+      // publicitaire. Seul le fait qu'il ait change est trace.
+      jetonConversions: parsed.data.capiClear
+        ? "(efface)"
+        : parsed.data.capiAccessToken
+          ? "(remplace)"
+          : "(inchange)",
     },
   });
 

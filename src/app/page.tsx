@@ -21,6 +21,7 @@ import { LocaleProvider } from "@/lib/i18n/client";
 import { getLocale, getT, pick } from "@/lib/i18n/server";
 import type { Locale } from "@/lib/i18n/dictionary";
 import { LanguageSwitcher } from "@/components/shell/language-switcher";
+import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { Wordmark } from "@/components/marketing/wordmark";
 import { WhatsAppButton } from "@/components/marketing/whatsapp-button";
 import { Shot } from "@/components/marketing/shot";
@@ -247,6 +248,9 @@ export default async function HomePage() {
 
           <div className="flex items-center gap-2 ml-auto">
             <LanguageSwitcher current={locale} />
+            {/* Clair, sombre, ou celui de l'appareil. Le troisieme etat est le
+                defaut : rien n'est ecrit et la page suit prefers-color-scheme. */}
+            <ThemeToggle compact />
             {/* Lien de connexion : la barre de progression du haut de page part
                 au clic, avant meme la reponse du serveur. */}
             <Link href={appLink} className="btn btn-secondary" style={{ minHeight: "2.75rem" }}>
@@ -887,6 +891,17 @@ export default async function HomePage() {
         {/* Contact                                                           */}
         {/* ---------------------------------------------------------------- */}
         <section className="mx-auto max-w-6xl px-5 py-20 sm:py-24">
+          {/* L'appel final etait la seule section de la page sans image, et
+              c'est celle qui demande le plus : elle arrive apres trois mille
+              mots, au moment ou il reste a decider. Une photographie du staff
+              au bord du terrain remet en tete a quoi sert le produit, juste au
+              dessus du bouton.
+
+              Elle passe apres le texte dans le document, donc apres lui sur
+              telephone : le titre et le bouton doivent rester en premier sur un
+              petit ecran. */}
+          <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+            <div className="lg:col-span-7">
           <h2
             className="display reveal max-w-3xl"
             style={{ fontSize: "clamp(2.25rem, 7vw, 4.5rem)" }}
@@ -922,6 +937,20 @@ export default async function HomePage() {
                 {t("home.contactWhatsapp")}
               </a>
             ) : null}
+          </div>
+
+            </div>
+
+            <div className="lg:col-span-5">
+              <Shot
+                base="batterie"
+                widths={[640, 960]}
+                sizes="(min-width: 1024px) 440px, calc(100vw - 2.5rem)"
+                alt={t("home.finalImageAlt")}
+                frame="aspect-[16/9] lg:aspect-[4/3]"
+                objectPosition="center 35%"
+              />
+            </div>
           </div>
 
           {/* Deux adresses distinctes, exigees par Stripe : un visiteur doit

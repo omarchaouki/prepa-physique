@@ -167,6 +167,37 @@ def main() -> None:
     # restent parfaits pour la publicite elle meme, ou ils sont nes.
     crop_box("lp/6.png", "lp-brief", 0.255, 0.0, 1.0, 0.66)
 
+    print("batterie (appel final de l'accueil) :")
+    # La derniere source encore inutilisee. Comme 6.png, c'est une composition
+    # publicitaire : seule la photographie est reprise, le panneau de titre a
+    # gauche et le badge en bas a droite sont laisses de cote. Leur texte est
+    # incruste dans le pixel et en francais, il serait faux sur la version
+    # anglaise et illisible pour un lecteur d'ecran.
+    #
+    # Le cadrage part a 33 % pour sortir entierement du panneau, et s'arrete a
+    # 47 % de la hauteur pour passer au dessus du badge.
+    #
+    # Deux largeurs seulement : apres recadrage la source ne fait plus que
+    # 1029 pixels de large, une troisieme serait un agrandissement. L'image
+    # s'affiche sur une demi colonne, ou 960 suffit largement.
+    crop_box("lp/5.png", "batterie", 0.33, 0.0, 1.0, 0.47, widths=(640, 960))
+
+    print("l'outil en main (respiration de la page publicitaire) :")
+    # Autre cadrage de la source du hero, et non une autre photographie : c'est
+    # la derniere scene disponible, et la reprendre de loin puis de pres donne
+    # deux images qui ne se ressemblent pas.
+    #
+    # Le hero garde la bande centrale, les trois personnes et le stade. Celle ci
+    # descend sur les mains : la tablette, sa vue de terrain, sa carte de
+    # chaleur, et les deux telephones. C'est la seule image de la page qui
+    # montre le produit reellement tenu, ce qui en fait la bonne respiration
+    # juste avant l'appel final.
+    #
+    # Le cadrage est volontairement plus large que le sujet pour atteindre
+    # 1440 pixels : plus serre, la troisieme largeur aurait ete un
+    # agrandissement.
+    crop_box("lp/4.jfif", "lp-outil", 0.14, 0.57, 0.88, 0.90)
+
     print("staff et joueurs :")
     # Recadrage sur la partie gauche, et pas seulement pour la composition :
     # le maillot de droite porte l'ecusson d'un club professionnel existant.

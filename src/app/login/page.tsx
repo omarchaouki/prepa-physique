@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { LocaleProvider } from "@/lib/i18n/client";
 import { LanguageSwitcher } from "@/components/shell/language-switcher";
+import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { Wordmark } from "@/components/marketing/wordmark";
 import { CONTACT } from "@/lib/marketing";
 import { LoginForm } from "./login-form";
@@ -143,6 +144,9 @@ export default async function LoginPage({
             </span>
             <span className="ms-auto">
               <LanguageSwitcher current={locale} />
+              {/* Clair, sombre, ou celui de l'appareil. Le troisieme etat est le
+                  defaut : rien n'est ecrit et la page suit prefers-color-scheme. */}
+              <ThemeToggle compact />
             </span>
           </div>
 

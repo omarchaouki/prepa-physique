@@ -1,13 +1,16 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { cookies, headers } from "next/headers";
 import { z } from "zod";
 
 import { prisma } from "@/lib/db";
 import { hashPassword, logAudit, requestIp, setSessionCookie, signSession } from "@/lib/auth";
 import { JOB_TITLES, JOB_TITLE_LABELS, PLAN_LIMITS, type JobTitle } from "@/lib/constants";
 import { slugify } from "@/lib/utils";
-import { SIGNUP_DONE_PARAM } from "@/components/tracking/events";
+import { SIGNUP_EVENT_PARAM } from "@/components/tracking/events";
+import { newEventId, sendLead } from "@/lib/capi";
+import { getTracking } from "@/lib/tracking";
 import type { ActionState } from "./auth";
 
 /**
@@ -231,9 +234,57 @@ export async function signUpAction(
   });
   await setSessionCookie(token);
 
-  // Le marqueur declenche l'evenement de conversion cote navigateur, puis
-  // s'efface de la barre d'adresse. Voir components/tracking/events.tsx : le
-  // pixel ne peut pas etre appele depuis une action serveur, et une conversion
-  // comptee au mauvais endroit fausse l'optimisation de toute la campagne.
-  redirect(`/app?${SIGNUP_DONE_PARAM}=1`);
+  // -------------------------------------------------------------------------
+  // Conversion
+  // -------------------------------------------------------------------------
+  //
+  // Elle part par deux chemins qui ne ratent pas les memes visiteurs :
+  //
+  //   le navigateur   le pixel voit le cookie publicitaire, mais un bloqueur,
+  //                   Safari ou un onglet ferme trop tot le font disparaitre
+  //   le serveur      l'API Conversions ne depend d'aucun de ces aleas, mais
+  //                   elle n'a que ce que l'inscription lui donne
+  //
+  // Les deux portent le meme identifiant, donc Meta les fusionne et ne compte
+  // qu'un seul prospect. Sans cet identifiant partage, la campagne optimiserait
+  // sur des chiffres doubles. Voir src/lib/capi.ts.
+  const eventId = newEventId();
+
+  try {
+    const { facebookPixelId } = await getTracking();
+    if (facebookPixelId) {
+      const requestHeaders = await headers();
+      const store = await cookies();
+
+      await sendLead({
+        eventId,
+        pixelId: facebookPixelId,
+        email,
+        phone,
+        country: country || null,
+        // L'adresse de la page ou la conversion a eu lieu, et non celle
+        // d'arrivee : c'est le formulaire qui a converti.
+        sourceUrl: requestHeaders.get("referer") ?? `${process.env.APP_URL?.trim() || ""}/inscription`,
+        clientIp: ip === "inconnu" ? null : ip,
+        userAgent: requestHeaders.get("user-agent"),
+        // Ces deux cookies sont poses par le pixel et portent l'essentiel de
+        // l'appariement. Absents chez un visiteur qui bloque le pixel, ce qui
+        // est precisement le cas que l'envoi serveur rattrape.
+        fbp: store.get("_fbp")?.value ?? null,
+        fbc: store.get("_fbc")?.value ?? null,
+      });
+    }
+  } catch (error) {
+    // Une mesure ratee n'empeche jamais une inscription d'aboutir.
+    console.error("[inscription] mesure serveur", error);
+  }
+
+  // Passage par /bienvenue, et non directement par /app.
+  //
+  // Les balises ne s'executent plus dans l'application ni dans le panneau
+  // proprietaire, pour les raisons de components/tracking/paths.ts. La
+  // conversion doit donc partir d'une page publique. /bienvenue la declenche
+  // avec l'identifiant engendre plus haut, puis passe la main sans retenir
+  // personne.
+  redirect(`/bienvenue?${SIGNUP_EVENT_PARAM}=${eventId}`);
 }

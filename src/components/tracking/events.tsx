@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
+import { isMeasuredPath } from "./paths";
+
 /**
  * Evenements envoyes aux outils de mesure.
  *
@@ -29,8 +31,15 @@ import { usePathname } from "next/navigation";
  * obligerait a redeployer le jour ou l'on change d'objectif.
  */
 
-/** Marqueur ajoute par l'inscription a l'adresse d'arrivee. */
-export const SIGNUP_DONE_PARAM = "bienvenue";
+/**
+ * Identifiant de l'evenement, engendre par le serveur.
+ *
+ * Il est la clef de la deduplication : le serveur a deja envoye ce meme Lead a
+ * l'API Conversions sous cet identifiant, et le pixel le repasse ici dans
+ * `eventID`. Meta reconnait les deux comme un seul fait. Sans lui, chaque
+ * inscription compterait deux prospects. Voir src/lib/capi.ts.
+ */
+export const SIGNUP_EVENT_PARAM = "eid";
 
 declare global {
   interface Window {
@@ -45,9 +54,17 @@ declare global {
  * Silencieux si le pixel n'est pas configure ou si un bloqueur l'a empeche de
  * se charger : aucun appel de mesure ne doit jamais interrompre un parcours.
  */
-export const trackStandard = (event: string, data?: Record<string, unknown>): void => {
+export const trackStandard = (
+  event: string,
+  data?: Record<string, unknown>,
+  /** Options du pixel, dont `eventID` pour la deduplication avec le serveur. */
+  options?: { eventID: string },
+): void => {
   try {
-    window.fbq?.("track", event, data);
+    // Le quatrieme argument n'est transmis que s'il existe : `fbq` traite un
+    // objet d'options vide differemment d'un argument absent.
+    if (options) window.fbq?.("track", event, data, options);
+    else window.fbq?.("track", event, data);
   } catch {
     /* mesure indisponible */
   }
@@ -73,6 +90,7 @@ export const tagSession = (key: string, value: string): void => {
 
 export function TrackingEvents() {
   const pathname = usePathname();
+  const mesure = isMeasuredPath(pathname);
   const first = useRef(true);
 
   // Page vue a chaque navigation interne. La balise de base en compte deja une
@@ -83,20 +101,12 @@ export function TrackingEvents() {
       first.current = false;
       return;
     }
+    // Aucune page vue dans l'application ni dans le panneau proprietaire :
+    // voir ./paths.ts. Ces ecrans ne sont pas du trafic de campagne.
+    if (!mesure) return;
     trackStandard("PageView");
-  }, [pathname]);
+  }, [pathname, mesure]);
 
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    if (!url.searchParams.has(SIGNUP_DONE_PARAM)) return;
-
-    trackStandard("CompleteRegistration", { content_name: "inscription", status: true });
-    trackStandard("Lead", { content_name: "inscription" });
-    tagSession("conversion", "inscription");
-
-    url.searchParams.delete(SIGNUP_DONE_PARAM);
-    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
-  }, []);
 
   return null;
 }

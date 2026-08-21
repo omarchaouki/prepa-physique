@@ -16,6 +16,7 @@
     "verify:science": "tsx scripts/verify-science.ts",
     "verify:norms": "tsx scripts/check-percentiles.ts",
     "verify:db": "tsx scripts/check-connection.ts",
+    "verify:capi": "tsx scripts/verify-capi.ts",
     "owner:ensure": "tsx scripts/ensure-owner.ts",
     "typecheck": "tsc --noEmit",
     "web:favicon": "python scripts/generate-favicon.py",
@@ -47,6 +48,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.15.0",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^2.6.0",
     "zod": "^3.24.1"
   },

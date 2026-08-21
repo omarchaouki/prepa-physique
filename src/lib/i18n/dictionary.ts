@@ -1075,6 +1075,11 @@ export const MESSAGES = {
   "signup.pending": ["Création", "Creating"],
   "signup.haveAccount": ["Vous avez déjà un compte ?", "Already have an account?"],
   "signup.signIn": ["Se connecter", "Sign in"],
+  "signup.welcomeTitle": ["Votre compte est créé", "Your account is ready"],
+  "signup.welcomeBody": [
+    "Ouverture de votre espace...",
+    "Opening your workspace...",
+  ],
   "signup.noAccount": ["Pas encore de compte ?", "No account yet?"],
   "signup.cta": ["Créer un club gratuitement", "Create a club for free"],
   "signup.ctaShort": ["Commencer gratuitement", "Start for free"],
@@ -1381,6 +1386,10 @@ export const MESSAGES = {
   ],
 
   // Contact et pied de page
+  "home.finalImageAlt": [
+    "Trois membres d'un staff consultent une tablette au bord du terrain pendant que les joueurs s'échauffent",
+    "Three staff members reading a tablet at the side of the pitch while players warm up",
+  ],
   "home.finalTitle": ["Passez votre prochaine batterie ici", "Run your next battery here"],
   "home.finalBody": [
     "Vingt minutes, votre effectif réel, la batterie que vous passez déjà. Nous répondons sous {hours} heures ouvrées.",
@@ -1450,6 +1459,27 @@ export const MESSAGES = {
   "tracking.eventSignupStarted": [
     "Le visiteur à rempli la première étape de l'inscription",
     "The visitor completed the first sign up step",
+  ],
+  "tracking.capiLabel": [
+    "Jeton de l'API Conversions",
+    "Conversions API access token",
+  ],
+  "tracking.capiHint": [
+    "Double l'événement Lead côté serveur, là où les bloqueurs de publicité et Safari font perdre le pixel. Les deux envois portent le même identifiant, Meta ne compte donc qu'un seul prospect. Le jeton se crée dans le gestionnaire d'événements, onglet Paramètres du pixel.",
+    "Doubles the Lead event server side, where ad blockers and Safari lose the pixel. Both sends carry the same identifier, so Meta counts a single lead. Create the token in Events Manager, under the pixel settings tab.",
+  ],
+  "tracking.capiPlaceholderSet": [
+    "Un jeton est enregistré. Tapez pour le remplacer.",
+    "A token is saved. Type to replace it.",
+  ],
+  "tracking.capiPlaceholderEmpty": ["Coller le jeton", "Paste the token"],
+  "tracking.capiClear": [
+    "Supprimer le jeton et couper la mesure serveur",
+    "Delete the token and stop server side tracking",
+  ],
+  "tracking.capiInvalid": [
+    "Ce jeton n'a pas le format attendu.",
+    "This token does not have the expected format.",
   ],
   "tracking.eventLead": [
     "Le compte est créé. C'est la conversion à optimiser.",
